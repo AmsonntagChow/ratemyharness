@@ -1,0 +1,20 @@
+{
+  "name": "ratemyharness",
+  "interface": {
+    "displayName": "RateMyHarness"
+  },
+  "plugins": [
+    {
+      "name": "ratemyharness",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ratemyharness"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

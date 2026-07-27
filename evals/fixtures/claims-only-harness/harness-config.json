@@ -1,0 +1,6 @@
+{
+  "max_steps": 20,
+  "timeout_ms": 30000,
+  "tool_allowlist": ["synthetic_search"],
+  "tracing": true
+}

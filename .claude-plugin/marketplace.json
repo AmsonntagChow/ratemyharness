@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "amsonntagchow-ratemyharness",
+  "description": "RateMyHarness for Claude Code.",
+  "owner": {
+    "name": "AmsonntagChow"
+  },
+  "plugins": [
+    {
+      "name": "ratemyharness",
+      "displayName": "RateMyHarness",
+      "source": "./",
+      "version": "1.0.0",
+      "description": "Audits AI agent harnesses for loop correctness, tool safety, context integrity, failure recovery, observability, and production readiness with evidence-backed release verdicts.",
+      "author": {
+        "name": "AmsonntagChow"
+      },
+      "homepage": "https://github.com/AmsonntagChow/ratemyharness#installation",
+      "repository": "https://github.com/AmsonntagChow/ratemyharness",
+      "license": "MIT",
+      "category": "development",
+      "tags": [
+        "agent-harness",
+        "agent-runtime",
+        "tool-safety",
+        "reliability",
+        "observability",
+        "release-gate"
+      ]
+    }
+  ]
+}

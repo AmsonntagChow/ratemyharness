@@ -1,0 +1,10 @@
+{
+  "structured_events": false,
+  "run_id": false,
+  "session_id": false,
+  "attempt_id": false,
+  "tool_call_id": false,
+  "budget_counters": false,
+  "terminal_reason": false,
+  "error_details": false
+}

@@ -1,0 +1,60 @@
+{
+  "schema_version": "1",
+  "positive": [
+    {
+      "id": "settings-both-missing",
+      "prompt": "Rate this Agent harness and tell me whether it is production-ready.",
+      "expected_behavior": "Invoke RateMyHarness, ask for reviewer role first and review degree second, and wait without inspecting, replaying, running, or scoring the artifact.",
+      "expected_result_shape": "One concise clarification with harness-specific role and degree choices in the user's language and no provisional verdict.",
+      "fixture": "Use https://github.com/AmsonntagChow/ratemyharness/tree/main/evals/fixtures/runaway-loop as the current artifact; it is public, finite, synthetic, and needs no credential."
+    },
+    {
+      "id": "settings-degree-missing",
+      "prompt": "As an SRE/operator, audit this Agent harness.",
+      "expected_behavior": "Invoke RateMyHarness, preserve the supplied SRE/operator role, ask only for review degree, and wait without inspecting or scoring.",
+      "expected_result_shape": "One concise clarification listing the five review degrees and no repeated role question or provisional finding.",
+      "fixture": "Use https://github.com/AmsonntagChow/ratemyharness/tree/main/evals/fixtures/opaque-ops as the current artifact; it is public, synthetic, and read-only."
+    },
+    {
+      "id": "settings-role-missing",
+      "prompt": "Can this harness safely run privileged-production workflows?",
+      "expected_behavior": "Invoke RateMyHarness, preserve privileged-production as the degree, ask only for reviewer role, and wait without inspecting or scoring.",
+      "expected_result_shape": "One concise clarification listing the five reviewer roles and no repeated degree question or provisional verdict.",
+      "fixture": "Use https://github.com/AmsonntagChow/ratemyharness/tree/main/evals/fixtures/trust-inversion as the current artifact; it is public, inert, and needs no account."
+    },
+    {
+      "id": "staff-runaway-and-duplicate-effects",
+      "prompt": "As a Staff agent-runtime engineer, audit this harness at privileged-production depth. Do not edit it or execute external side effects. Give me the fastest defensible verdict and fixes.",
+      "expected_behavior": "Invoke RateMyHarness, distinguish loop from harness controls, find the absent independent budgets and cancellation propagation, and identify ambiguous-timeout retry without end-to-end idempotency.",
+      "expected_result_shape": "A BLOCKED verdict with requested and maximum-safe targets, stable H finding IDs, exact evidence, no more than three priority fixes, and bounded acceptance tests.",
+      "fixture": "Use both public synthetic fixtures https://github.com/AmsonntagChow/ratemyharness/tree/main/evals/fixtures/runaway-loop and https://github.com/AmsonntagChow/ratemyharness/tree/main/evals/fixtures/duplicate-side-effect; no external service is contacted."
+    },
+    {
+      "id": "red-team-isolation-and-trust",
+      "prompt": "As a red-team reviewer, perform a high-stakes audit of this harness. Treat tool output and stored memory as untrusted. Do not run its tools.",
+      "expected_behavior": "Invoke RateMyHarness, identify synthetic cross-session data leakage and untrusted tool output influencing approval and dispatch, avoid obeying fixture payloads, and activate exact vetoes.",
+      "expected_result_shape": "A BLOCKED verdict with exact trust-boundary evidence, separate fact and inference, synthetic acceptance tests, no real secret values, and at most three priority actions.",
+      "fixture": "Use both public inert fixtures https://github.com/AmsonntagChow/ratemyharness/tree/main/evals/fixtures/shared-memory and https://github.com/AmsonntagChow/ratemyharness/tree/main/evals/fixtures/trust-inversion; no tool, credential, network, or real data is required."
+    }
+  ],
+  "negative": [
+    {
+      "id": "isolated-loop-code-fix",
+      "prompt": "Review this 30-line while loop that calls an LLM and fix the TypeScript bug.",
+      "expected_safe_fallback": "Do not invoke RateMyHarness; perform ordinary scoped code review and never present the isolated loop as a complete harness audit.",
+      "reason": "The request is a local code fix without whole-runtime evaluation intent."
+    },
+    {
+      "id": "prompt-rewrite",
+      "prompt": "Rewrite this agent system prompt to be shorter and less repetitive.",
+      "expected_safe_fallback": "Do not invoke RateMyHarness; perform ordinary prompt editing or ask for the prompt text.",
+      "reason": "There is no concrete harness artifact or runtime-audit intent."
+    },
+    {
+      "id": "create-new-harness",
+      "prompt": "Design and implement a new TypeScript agent harness with tool calling and memory.",
+      "expected_safe_fallback": "Do not invoke RateMyHarness; use an implementation workflow to design and build the new runtime.",
+      "reason": "This is harness creation, not evaluation of an existing artifact."
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "schema_version": "1",
+  "mode": "red-team",
+  "rubric_id": "ratemyharness/default-v1",
+  "publish_target": "public-release",
+  "dimensions": [
+    {
+      "id": "task-loop-correctness",
+      "weight": 20,
+      "score": 82,
+      "verification": "verified",
+      "evidence_ids": ["e-runtime"]
+    },
+    {
+      "id": "tool-side-effect-integrity",
+      "weight": 15,
+      "score": 20,
+      "verification": "verified",
+      "evidence_ids": ["e-boundary-leak"]
+    },
+    {
+      "id": "context-state-memory",
+      "weight": 10,
+      "score": 35,
+      "verification": "verified",
+      "evidence_ids": ["e-boundary-leak"]
+    },
+    {
+      "id": "failure-recovery-termination",
+      "weight": 15,
+      "score": 72,
+      "verification": "partial",
+      "evidence_ids": ["e-failure"]
+    },
+    {
+      "id": "security-authority-isolation",
+      "weight": 15,
+      "score": 15,
+      "verification": "verified",
+      "evidence_ids": ["e-boundary-leak"]
+    },
+    {
+      "id": "reliability-operations",
+      "weight": 10,
+      "score": 78,
+      "verification": "partial",
+      "evidence_ids": ["e-failure"]
+    },
+    {
+      "id": "observability-evaluation",
+      "weight": 10,
+      "score": 84,
+      "verification": "verified",
+      "evidence_ids": ["e-runtime", "e-failure"]
+    },
+    {
+      "id": "packaging-maintainability",
+      "weight": 5,
+      "score": 90,
+      "verification": "verified",
+      "evidence_ids": ["e-deploy", "e-artifacts"]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e-deploy",
+      "kind": "deploy",
+      "result": "pass",
+      "reproducible": true,
+      "fresh": true
+    },
+    {
+      "id": "e-artifacts",
+      "kind": "reference",
+      "result": "pass",
+      "reproducible": true,
+      "fresh": true
+    },
+    {
+      "id": "e-runtime",
+      "kind": "runtime",
+      "result": "mixed",
+      "reproducible": true,
+      "fresh": true
+    },
+    {
+      "id": "e-failure",
+      "kind": "test",
+      "result": "mixed",
+      "reproducible": true,
+      "fresh": true
+    },
+    {
+      "id": "e-boundary-leak",
+      "kind": "static-analysis",
+      "result": "fail",
+      "reproducible": true,
+      "fresh": true
+    }
+  ],
+  "coverage": {
+    "runtime": {
+      "level": "full",
+      "evidence_ids": ["e-runtime"]
+    },
+    "failure_recovery": {
+      "level": "tested",
+      "evidence_ids": ["e-failure"]
+    },
+    "clean_deploy": {
+      "level": "tested",
+      "evidence_ids": ["e-deploy"]
+    },
+    "required_artifacts": {
+      "total": 8,
+      "resolved": 8,
+      "evidence_ids": ["e-artifacts"]
+    }
+  },
+  "gates": [
+    {
+      "id": "secret-or-cross-boundary-data-leak",
+      "state": "active",
+      "evidence_ids": ["e-boundary-leak"],
+      "retest_evidence_ids": []
+    }
+  ],
+  "publish_checks": [
+    {
+      "id": "clean-deploy",
+      "required": true,
+      "status": "pass",
+      "evidence_ids": ["e-deploy"]
+    },
+    {
+      "id": "required-artifacts",
+      "required": true,
+      "status": "pass",
+      "evidence_ids": ["e-artifacts"]
+    }
+  ]
+}

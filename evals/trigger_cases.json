@@ -1,0 +1,149 @@
+{
+  "schema_version": "1",
+  "purpose": "Measure whether RateMyHarness is selected for concrete Agent runtime and harness audits without absorbing Agent Skill review, product review, ordinary code work, test harnesses, prompts, tools, or general architecture advice.",
+  "runs_per_case": 3,
+  "trigger_rate_threshold": 0.5,
+  "selection_rule": "a concrete Agent harness, runtime, orchestrator, configuration, trace set, or current workspace plus rating, audit, red-team, operations, release, re-review, or artifact-grounded defense intent",
+  "cases": [
+    {
+      "id": "p01",
+      "split": "train",
+      "prompt": "给当前仓库里的 Agent harness 打个分，看看这个 runtime 能不能上线。",
+      "should_trigger": true,
+      "expected_route": "settings-gate"
+    },
+    {
+      "id": "p02",
+      "split": "train",
+      "prompt": "As a Staff runtime engineer, run a strict team-shared audit of ./runtime/agent-harness. Inspect its loop, tool dispatch, state, retries, and termination.",
+      "should_trigger": true,
+      "expected_route": "staff-runtime-engineer"
+    },
+    {
+      "id": "p03",
+      "split": "train",
+      "prompt": "Red-team the coding-agent harness in this workspace for privileged production. Check whether untrusted tool output can gain authority or bypass approvals.",
+      "should_trigger": true,
+      "expected_route": "red-team"
+    },
+    {
+      "id": "p04",
+      "split": "train",
+      "prompt": "Act as the SRE operator for this production Agent runtime. Audit cancellation, timeouts, retry storms, budgets, backpressure, and recovery from the supplied configs and traces.",
+      "should_trigger": true,
+      "expected_route": "sre-operator"
+    },
+    {
+      "id": "p05",
+      "split": "train",
+      "prompt": "As the harness owner, review this local prototype and tell me whether it actually improves task success enough to justify its latency, cost, and user friction.",
+      "should_trigger": true,
+      "expected_route": "harness-owner"
+    },
+    {
+      "id": "p06",
+      "split": "train",
+      "prompt": "I fixed H-001 through H-004 in the Agent harness. Re-run the same role, target, traces, failure injections, rubric, and acceptance tests, then show the score delta.",
+      "should_trigger": true,
+      "expected_route": "re-review"
+    },
+    {
+      "id": "p07",
+      "split": "holdout",
+      "prompt": "Would you approve this orchestration runtime for public use? Audit https://github.com/example/agent-runner and give me a release gate, not implementation advice.",
+      "should_trigger": true,
+      "expected_route": "settings-gate"
+    },
+    {
+      "id": "p08",
+      "split": "holdout",
+      "prompt": "Make me defend the Agent runtime in this workspace one question at a time. Derive questions from its loop, permissions, memory, and traces, then score the harness and my understanding separately.",
+      "should_trigger": true,
+      "expected_route": "oral-defense"
+    },
+    {
+      "id": "p09",
+      "split": "holdout",
+      "prompt": "用红队视角做 privileged-production 审查：这个外层 runtime 会不会把工具返回值当成系统指令，或者把一个用户的 memory 带进另一个会话？",
+      "should_trigger": true,
+      "expected_route": "red-team"
+    },
+    {
+      "id": "p10",
+      "split": "holdout",
+      "prompt": "Review the run traces and configuration for this high-volume agent service as an SRE. Decide whether cancellation, queue pressure, retry behavior, and incident diagnosis are production-ready.",
+      "should_trigger": true,
+      "expected_route": "sre-operator"
+    },
+    {
+      "id": "n01",
+      "split": "train",
+      "prompt": "给 ./skills/db-migrator 这个 Agent Skill 做严格评分。",
+      "should_trigger": false,
+      "reason": "the artifact is an Agent Skill and belongs to RateMySkill"
+    },
+    {
+      "id": "n02",
+      "split": "train",
+      "prompt": "Audit my vibe-coded checkout SaaS and tell me whether it can accept real payments.",
+      "should_trigger": false,
+      "reason": "whole-product review belongs to RateMyCode"
+    },
+    {
+      "id": "n03",
+      "split": "train",
+      "prompt": "Explain the difference between an agent loop and an agent harness.",
+      "should_trigger": false,
+      "reason": "general teaching without a concrete harness artifact or audit intent"
+    },
+    {
+      "id": "n04",
+      "split": "train",
+      "prompt": "Build me a Python agent harness with tools, memory, retries, and tracing.",
+      "should_trigger": false,
+      "reason": "implementation request rather than evaluation of an existing harness"
+    },
+    {
+      "id": "n05",
+      "split": "train",
+      "prompt": "This retry helper sometimes raises TimeoutError. Debug the function and patch it.",
+      "should_trigger": false,
+      "reason": "isolated code diagnosis and repair"
+    },
+    {
+      "id": "n06",
+      "split": "train",
+      "prompt": "Review my pytest test harness for flaky browser tests.",
+      "should_trigger": false,
+      "reason": "software test harness rather than an Agent runtime harness"
+    },
+    {
+      "id": "n07",
+      "split": "holdout",
+      "prompt": "Security-audit this standalone MCP server and its tool implementations.",
+      "should_trigger": false,
+      "reason": "the target is an MCP service rather than the runtime that governs an Agent loop"
+    },
+    {
+      "id": "n08",
+      "split": "holdout",
+      "prompt": "Rate this single customer-support agent response for correctness and tone.",
+      "should_trigger": false,
+      "reason": "output evaluation without a runtime artifact"
+    },
+    {
+      "id": "n09",
+      "split": "holdout",
+      "prompt": "Should I use LangGraph, the OpenAI Agents SDK, or a custom loop for a new project?",
+      "should_trigger": false,
+      "reason": "framework selection and architecture advice without an existing artifact to audit"
+    },
+    {
+      "id": "n10",
+      "split": "holdout",
+      "prompt": "Review this system prompt and JSON tool schema for clarity, but do not inspect the runtime.",
+      "should_trigger": false,
+      "reason": "prompt and schema review explicitly excludes the harness"
+    }
+  ]
+}

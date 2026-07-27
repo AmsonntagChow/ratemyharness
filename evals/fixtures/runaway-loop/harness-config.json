@@ -1,0 +1,11 @@
+{
+  "completion_condition": "model_emits_done",
+  "max_steps": null,
+  "max_tool_calls": null,
+  "wall_clock_timeout_ms": null,
+  "token_budget": null,
+  "cost_budget_usd": null,
+  "cancellation_checkpoints": ["before_model"],
+  "propagate_cancellation_to_tool": false,
+  "fixture_note": "There is no executable loop in this fixture. The finite trace below represents the failure safely."
+}

@@ -1,0 +1,6 @@
+{
+  "max_attempts": 2,
+  "retry_on": ["TimeoutError"],
+  "tool_call_id_per_attempt": true,
+  "end_to_end_idempotency_key": null
+}

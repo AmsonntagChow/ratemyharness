@@ -1,0 +1,45 @@
+{
+  "name": "ratemyharness",
+  "version": "1.0.0",
+  "description": "Audits AI agent harnesses for loop correctness, tool safety, context integrity, failure recovery, observability, and production readiness with evidence-backed release verdicts.",
+  "author": {
+    "name": "AmsonntagChow",
+    "url": "https://github.com/AmsonntagChow"
+  },
+  "homepage": "https://github.com/AmsonntagChow/ratemyharness#installation",
+  "repository": "https://github.com/AmsonntagChow/ratemyharness",
+  "license": "MIT",
+  "keywords": [
+    "agent-harness",
+    "agent-runtime",
+    "tool-safety",
+    "context-management",
+    "failure-recovery",
+    "observability",
+    "release-gate"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "RateMyHarness",
+    "shortDescription": "Audit agent harnesses safely",
+    "longDescription": "RateMyHarness audits the runtime around an AI agent, not just its prompt or loop. Choose a harness owner, Staff agent-runtime engineer, red-team reviewer, SRE/operator, or oral-defense professor, then choose how hard to judge it. The plugin traces model and tool turns; checks context and state isolation, permissions, side effects, retries, budgets, cancellation, termination, recovery, observability, and eval evidence; blocks unsafe releases; and returns reproducible findings, the three fastest fixes, and a same-rubric retest plan.",
+    "developerName": "AmsonntagChow",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Analyze",
+      "Test"
+    ],
+    "websiteURL": "https://github.com/AmsonntagChow/ratemyharness",
+    "privacyPolicyURL": "https://github.com/AmsonntagChow/ratemyharness/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/AmsonntagChow/ratemyharness/blob/main/TERMS.md",
+    "defaultPrompt": [
+      "As a Staff agent-runtime engineer, audit this harness for public release and give me the three fastest fixes.",
+      "Red-team this agent harness at privileged depth. Find authority, isolation, tool, and side-effect failures.",
+      "As an SRE, test this harness for runaway loops, retries, cancellation, recovery, cost, and observability."
+    ],
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png"
+  }
+}

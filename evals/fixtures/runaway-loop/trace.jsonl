@@ -1,0 +1,15 @@
+{"event":"run_started","run_id":"synthetic-run-1"}
+{"event":"model_action","step":1,"action":"synthetic_lookup"}
+{"event":"tool_completed","step":1,"tool_call_id":"call-1"}
+{"event":"model_action","step":2,"action":"synthetic_lookup"}
+{"event":"tool_completed","step":2,"tool_call_id":"call-2"}
+{"event":"cancellation_requested","after_step":2}
+{"event":"model_action","step":3,"action":"synthetic_lookup"}
+{"event":"tool_completed","step":3,"tool_call_id":"call-3"}
+{"event":"model_action","step":4,"action":"synthetic_lookup"}
+{"event":"tool_completed","step":4,"tool_call_id":"call-4"}
+{"event":"model_action","step":5,"action":"synthetic_lookup"}
+{"event":"tool_completed","step":5,"tool_call_id":"call-5"}
+{"event":"model_action","step":6,"action":"synthetic_lookup"}
+{"event":"tool_completed","step":6,"tool_call_id":"call-6"}
+{"event":"fixture_guard_stop","reason":"finite evaluator sentinel; absent from the reviewed harness"}
