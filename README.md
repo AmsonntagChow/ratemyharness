@@ -1,8 +1,8 @@
 # RateMyHarness
 
-Evidence-backed release review for AI agent harnesses.
+English | [简体中文](README.zh-CN.md)
 
-给 AI Agent 运行底座做基于证据的上线体检。
+Evidence-backed release review for AI agent harnesses.
 
 > Your agent completed a demo. Now prove the runtime deserves real tools, data, and users.
 
@@ -57,11 +57,11 @@ The Skill can also be installed manually by copying `skills/ratemyharness` into 
 Give it a real harness repository, runtime folder, configuration, trace set, deployment, or runnable fixture. If the prompt does not already specify them, RateMyHarness first asks for two settings and waits:
 
 ```text
-1. 角色：Agent 产品负责人 / Staff Agent Runtime 工程师 / 红队审查员 / SRE 运行负责人 / 答辩老师
-2. 程度：快速体检 / 严格评审 / 上线门禁 / 特权审查 / 生死审查
+1. Role: Agent product owner / Staff agent-runtime engineer / Red-team reviewer / SRE/operator / Oral-defense professor
+2. Review level: Quick check / Strict review / Release gate / Privileged review / Life-or-death review
 ```
 
-It never silently defaults to the engineering role or the harshest degree. For example:
+It never silently defaults to the engineering role or the strictest review level. For example:
 
 ```text
 As a Staff agent-runtime engineer, audit ./runtime for privileged production. Do not edit it or call external services. Give me the three fastest fixes.
@@ -94,7 +94,7 @@ It uses hard vetoes for authority bypass, cross-boundary data leakage, untrusted
 ```text
 Issue list:
 - [H-002 · BLOCKER] Cancellation does not stop tool calls — the agent keeps spending money after the user presses Stop.
-待验证:
+To verify:
 - [U-003 · UNVERIFIED] Tenant isolation has not been exercised — one user's data may be exposed to another user.
 
 Evidence lanes:
@@ -120,7 +120,7 @@ Top 3 actions:
 Retest plan:
 ```
 
-Every completed verdict starts with every verified issue, severity-sorted, as one plain-language line containing severity, failure, and consequence. Unverified items appear separately under `待验证`; fixes, evidence, and technical detail stay below, and only the next-action list is capped at three.
+Every completed verdict starts with every verified issue, severity-sorted, as one plain-language line containing severity, failure, and consequence. Unverified items appear separately under `To verify`; fixes, evidence, and technical detail stay below, and only the next-action list is capped at three.
 
 The four evidence lanes are independent and use only `PASS`, `FAIL`, `UNVERIFIED`, or `N/A`. Every evidence item declares its lane and assertion type, so a structural repository test cannot masquerade as a critical E2E run. Deterministic checks cannot hide poor task success, and a strong model cannot hide a broken runtime. Probabilistic evidence records equal-arm successes, count-derived uplift, thresholds, bounded variance, cost per success, latency, and the exact harness/build, model, prompt, tool-schema, retrieval/data, dataset, rubric, and judge identity. Every judge has a kind, ID, version, and digest; an LLM judge also needs calibration.
 
@@ -177,7 +177,7 @@ python3 /path/to/plugin-creator/scripts/validate_plugin.py plugins/ratemyharness
 
 These commands validate repository structure, fixtures, and scorer behavior; a green result is not evidence that RateMyHarness or an audited harness performed well in a real model run. Contributions must include captured behavioral evidence, not only a prose diff. Read [CONTRIBUTING.md](CONTRIBUTING.md).
 
-This repository's authoring approach is informed by [从零做一个高质量 Agent Skill，并把它当开源项目运营](https://research.xishe.ai/skill-authoring-and-oss), especially its guidance on description-first discovery, progressive disclosure, separated trigger and execution evals, reference integrity, zero-dependency scripts, and open-source distribution.
+This repository's authoring approach is informed by [Building a High-Quality Agent Skill from Scratch and Running It as an Open-Source Project](https://research.xishe.ai/skill-authoring-and-oss), especially its guidance on description-first discovery, progressive disclosure, separated trigger and execution evals, reference integrity, zero-dependency scripts, and open-source distribution.
 
 ## License
 
