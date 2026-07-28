@@ -2,14 +2,14 @@
 
 Evidence-backed release review for AI agent harnesses.
 
+给 AI Agent 运行底座做基于证据的上线体检。
+
 > Your agent completed a demo. Now prove the runtime deserves real tools, data, and users.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-2f855a.svg)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-5b5bd6.svg)](https://agentskills.io/)
 
 RateMyHarness audits the runtime around an AI agent: the loop, tool dispatch, context, state, memory, permissions, sandbox, approvals, retries, budgets, cancellation, termination, tracing, evaluation, and recovery.
-
-中文一句话：我做了一个给 AI Agent 运行底座做上线体检的 Skill。
 
 ## What it is
 
