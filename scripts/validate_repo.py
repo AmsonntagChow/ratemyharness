@@ -152,7 +152,9 @@ def validate_claude_plugin(errors: list[str]) -> None:
     if manifest.get("displayName") != "RateMyHarness":
         errors.append("Claude plugin displayName must be 'RateMyHarness'")
     version = manifest.get("version")
-    if not isinstance(version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", version):
+    if not isinstance(version, str) or not re.fullmatch(
+        r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version
+    ):
         errors.append("Claude plugin version must use three-part semantic versioning")
     if not isinstance(manifest.get("description"), str) or not manifest["description"].strip():
         errors.append("Claude plugin manifest needs a non-empty description")
@@ -192,7 +194,13 @@ def validate_claude_plugin(errors: list[str]) -> None:
 def directory_files(root: Path) -> list[Path]:
     if not root.is_dir():
         return []
-    return sorted(path.relative_to(root) for path in root.rglob("*") if path.is_file())
+    return sorted(
+        path.relative_to(root)
+        for path in root.rglob("*")
+        if path.is_file()
+        and "__pycache__" not in path.relative_to(root).parts
+        and path.suffix not in {".pyc", ".pyo"}
+    )
 
 
 def validate_codex_plugin(errors: list[str]) -> None:
@@ -205,8 +213,11 @@ def validate_codex_plugin(errors: list[str]) -> None:
     name = manifest.get("name")
     if not isinstance(name, str) or len(name) > 64 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", name):
         errors.append("Codex plugin name must use 1–64 letters, digits, underscores, or hyphens")
-    if manifest.get("version") != "1.0.0":
-        errors.append("Codex plugin version must be 1.0.0")
+    version = manifest.get("version")
+    if not isinstance(version, str) or not re.fullmatch(
+        r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version
+    ):
+        errors.append("Codex plugin version must use three-part semantic versioning")
     if not isinstance(manifest.get("description"), str) or not 1 <= len(manifest["description"]) <= 1024:
         errors.append("Codex plugin description must contain 1–1,024 characters")
     if isinstance(claude_manifest, dict) and manifest.get("version") != claude_manifest.get("version"):
@@ -450,6 +461,31 @@ def validate_execution_evals(errors: list[str]) -> None:
     method = payload.get("method")
     if not isinstance(method, dict) or method.get("arms") != ["with_skill", "without_skill"]:
         errors.append("execution evals must define with_skill and without_skill arms")
+        method = {}
+    if method.get("runs_per_arm", 0) < 2:
+        errors.append("execution evals must repeat each arm at least twice")
+    if method.get("evidence_status") != "specification-only-until-fresh-runs-are-captured":
+        errors.append("execution eval fixtures must identify themselves as specification-only")
+    expected_lanes = [
+        "deterministic-checks",
+        "critical-journey-e2e",
+        "probabilistic-eval",
+        "continuous-evidence",
+    ]
+    if method.get("required_evidence_lanes") != expected_lanes:
+        errors.append("execution evals must name all four evidence lanes in canonical order")
+    expected_identity = [
+        "harness_build",
+        "model",
+        "prompt",
+        "tool_schemas",
+        "retrieval_data",
+        "dataset",
+        "rubric",
+        "judge",
+    ]
+    if method.get("required_quality_identity") != expected_identity:
+        errors.append("execution evals must name the complete quality-evaluation identity tuple")
     cases = payload.get("cases")
     if not isinstance(cases, list) or len(cases) < 3:
         errors.append("execution evals must contain exactly eight cases")
@@ -491,6 +527,18 @@ def validate_scorecard(errors: list[str]) -> None:
         return
     if payload.get("decision") != "BLOCKED":
         errors.append("blocked-release scorecard must exercise a BLOCKED decision")
+    expected_lanes = {
+        "deterministic-checks",
+        "critical-journey-e2e",
+        "probabilistic-eval",
+        "continuous-evidence",
+    }
+    lanes = payload.get("evidence_lanes")
+    if not isinstance(lanes, dict) or set(lanes.get("lanes", {})) != expected_lanes:
+        errors.append("blocked-release scorecard must emit all four evidence lanes")
+    quality = payload.get("quality_evaluation")
+    if not isinstance(quality, dict) or quality.get("applicability") != "required":
+        errors.append("blocked-release scorecard must exercise a repeated quality summary")
 
 
 def main() -> int:
@@ -513,7 +561,7 @@ def main() -> int:
             print(f"ERROR: {error}", file=sys.stderr)
         print(f"validation failed with {len(errors)} error(s)", file=sys.stderr)
         return 1
-    print("validation passed")
+    print("validation passed (structural only; no real harness behavior was executed)")
     return 0
 
 

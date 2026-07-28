@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "skill": {
+    "name": "ratemyharness",
+    "version": "1.0.1"
+  },
+  "release_input_sha256": "a3437ade3def1cc634da6cc78b8fbcbc73decd1e4c0677963fbdae82817b1bc4",
+  "archive": {
+    "path": "dist/ratemyharness-plugin-1.0.1.zip",
+    "bytes": 656086,
+    "sha256": "39bfee32a3416c4a5b99df72caf07ee6e4e5306a7ee26c38557ae293a36a0346"
+  },
+  "repository_checks": {
+    "status": "passed",
+    "limited_evidence_accepted": false,
+    "items": [
+      {
+        "id": "repository-validator",
+        "kind": "validation",
+        "argv": [
+          "python",
+          "-B",
+          "scripts/validate_repo.py"
+        ],
+        "exit_code": 0
+      },
+      {
+        "id": "python-unittest",
+        "kind": "unit",
+        "argv": [
+          "python",
+          "-B",
+          "-m",
+          "unittest",
+          "discover",
+          "-s",
+          "tests",
+          "-v"
+        ],
+        "exit_code": 0
+      }
+    ]
+  }
+}

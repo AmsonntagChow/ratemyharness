@@ -17,14 +17,36 @@ SPEC.loader.exec_module(score_review)
 
 
 def base_payload():
+    identity = {
+        "harness_build": "harness@sha256:test",
+        "model": "model@test",
+        "prompt": "prompt@sha256:test",
+        "tool_schemas": "tools@sha256:test",
+        "retrieval_data": "none",
+        "dataset": "dataset@test",
+        "rubric": "rubric@test",
+    }
+    judge = {
+        "kind": "llm",
+        "id": "quality-judge",
+        "version": "1",
+        "digest": "sha256:" + "c" * 64,
+        "calibration_evidence_ids": ["e-judge"],
+    }
+    identity_sha256 = score_review.quality_identity_sha256(identity, judge)
     evidence = [
-        {"id": "e-install", "kind": "install", "result": "pass", "reproducible": True, "fresh": True},
-        {"id": "e-reference", "kind": "reference", "result": "pass", "reproducible": True, "fresh": True},
-        {"id": "e-runtime", "kind": "runtime", "result": "pass", "reproducible": True, "fresh": True},
-        {"id": "e-failure_recovery", "kind": "test", "result": "pass", "reproducible": True, "fresh": True},
+        {"id": "e-install", "kind": "install", "result": "pass", "reproducible": True, "fresh": True, "lane": "structural", "assertion_type": "deterministic"},
+        {"id": "e-reference", "kind": "reference", "result": "pass", "reproducible": True, "fresh": True, "lane": "structural", "assertion_type": "deterministic"},
+        {"id": "e-runtime", "kind": "runtime", "result": "pass", "reproducible": True, "fresh": True, "lane": "critical-journey-e2e", "assertion_type": "deterministic"},
+        {"id": "e-failure_recovery", "kind": "test", "result": "pass", "reproducible": True, "fresh": True, "lane": "deterministic-checks", "assertion_type": "deterministic"},
+        {"id": "e-deterministic", "kind": "test", "result": "pass", "reproducible": True, "fresh": True, "lane": "deterministic-checks", "assertion_type": "deterministic"},
+        {"id": "e-journey", "kind": "runtime", "result": "pass", "reproducible": True, "fresh": True, "lane": "critical-journey-e2e", "assertion_type": "deterministic"},
+        {"id": "e-quality", "kind": "eval", "result": "pass", "reproducible": True, "fresh": True, "lane": "probabilistic-eval", "assertion_type": "mixed", "identity_sha256": identity_sha256},
+        {"id": "e-continuous", "kind": "metric", "result": "pass", "reproducible": True, "fresh": True, "lane": "continuous-evidence", "assertion_type": "deterministic", "identity_sha256": identity_sha256},
+        {"id": "e-judge", "kind": "eval", "result": "pass", "reproducible": True, "fresh": True, "lane": "probabilistic-eval", "assertion_type": "mixed", "identity_sha256": identity_sha256},
     ]
     return {
-        "schema_version": "1",
+        "schema_version": "2",
         "mode": "harness-owner",
         "rubric_id": "test/default-v1",
         "publish_target": "public-release",
@@ -59,6 +81,33 @@ def base_payload():
             },
         ],
         "evidence": evidence,
+        "evidence_lanes": {
+            "deterministic-checks": {"status": "PASS", "evidence_ids": ["e-deterministic"]},
+            "critical-journey-e2e": {"status": "PASS", "evidence_ids": ["e-journey"]},
+            "probabilistic-eval": {"status": "PASS", "evidence_ids": ["e-quality", "e-judge"]},
+            "continuous-evidence": {"status": "PASS", "evidence_ids": ["e-continuous"]},
+        },
+        "quality_evaluation": {
+            "applicability": "required",
+            "identity": identity,
+            "identity_sha256": identity_sha256,
+            "comparison": {
+                "with_harness": {"runs": 10, "successes": 9},
+                "baseline": {"runs": 10, "successes": 6},
+                "uplift": {"observed": 0.3, "minimum": 0.1},
+            },
+            "task_success": {"observed": 0.9, "minimum": 0.8},
+            "task_success_variance": {
+                "observed_standard_deviation": 0.04,
+                "maximum_standard_deviation": 0.1,
+                "policy": "Repeat equal arms and withhold PASS above the declared maximum.",
+            },
+            "unsafe_effect_rate": {"observed": 0, "maximum": 0.01},
+            "cost_per_success": {"observed": 0.2, "maximum": 0.3, "unit": "USD"},
+            "latency_ms": {"observed_p95": 2000, "maximum_p95": 3000},
+            "judge": judge,
+            "evidence_ids": ["e-quality", "e-judge"],
+        },
         "coverage": {
             "runtime": {"level": "full", "evidence_ids": ["e-runtime"]},
             "failure_recovery": {"level": "tested", "evidence_ids": ["e-failure_recovery"]},
@@ -99,6 +148,13 @@ def add_target_checks(payload, target):
     else:
         fixtures = ()
     for check_id, evidence_id, kind in fixtures:
+        lane = (
+            "continuous-evidence"
+            if kind == "log"
+            else "deterministic-checks"
+            if kind in {"runtime", "test", "trace"}
+            else "structural"
+        )
         payload["evidence"].append(
             {
                 "id": evidence_id,
@@ -106,6 +162,8 @@ def add_target_checks(payload, target):
                 "result": "pass",
                 "reproducible": True,
                 "fresh": True,
+                "lane": lane,
+                "assertion_type": "deterministic",
             }
         )
         payload["publish_checks"].append(
@@ -135,18 +193,27 @@ class ScoreReviewTests(unittest.TestCase):
                 text=True,
             )
 
-    def add_active_gate(self, payload, gate_id):
+    def add_active_gate(self, payload, gate_id, affected_targets=None):
         payload["evidence"].append(
-            {"id": "e-veto", "kind": "static-analysis", "result": "fail", "reproducible": True, "fresh": True}
+            {"id": "e-veto", "kind": "static-analysis", "result": "fail", "reproducible": True, "fresh": True, "lane": "structural", "assertion_type": "deterministic"}
         )
-        payload["gates"] = [
-            {
-                "id": gate_id,
-                "state": "active",
-                "evidence_ids": ["e-veto"],
-                "retest_evidence_ids": [],
-            }
-        ]
+        gate = {
+            "id": gate_id,
+            "state": "active",
+            "evidence_ids": ["e-veto"],
+            "retest_evidence_ids": [],
+        }
+        if affected_targets is not None:
+            gate["affected_targets"] = affected_targets
+        payload["gates"] = [gate]
+
+    def rebind_quality_identity(self, payload):
+        quality = payload["quality_evaluation"]
+        digest = score_review.quality_identity_sha256(quality["identity"], quality["judge"])
+        quality["identity_sha256"] = digest
+        for evidence in payload["evidence"]:
+            if evidence["id"] in {"e-quality", "e-judge", "e-continuous"}:
+                evidence["identity_sha256"] = digest
 
     def test_fully_evidenced_harness_is_ready_for_release(self):
         result = self.compute(base_payload())
@@ -155,6 +222,164 @@ class ScoreReviewTests(unittest.TestCase):
         self.assertEqual(result["coverage"]["confidence"], "A")
         self.assertEqual(result["distribution_evidence_gaps"], [])
         self.assertEqual(result["publish_checks"]["target_required"], [])
+        self.assertEqual(
+            {lane: value["status"] for lane, value in result["evidence_lanes"]["lanes"].items()},
+            {
+                "deterministic-checks": "PASS",
+                "critical-journey-e2e": "PASS",
+                "probabilistic-eval": "PASS",
+                "continuous-evidence": "PASS",
+            },
+        )
+
+    def test_deterministic_failure_cannot_be_hidden_by_quality_pass(self):
+        payload = base_payload()
+        next(item for item in payload["evidence"] if item["id"] == "e-deterministic")["result"] = "fail"
+        payload["evidence_lanes"]["deterministic-checks"]["status"] = "FAIL"
+        result = self.compute(payload)
+        self.assertEqual(result["decision"], "NOT_READY")
+        self.assertEqual(result["evidence_lanes"]["failed"], ["deterministic-checks"])
+        self.assertEqual(result["evidence_lanes"]["lanes"]["probabilistic-eval"]["status"], "PASS")
+
+    def test_quality_failure_cannot_be_hidden_by_stable_runtime(self):
+        payload = base_payload()
+        next(item for item in payload["evidence"] if item["id"] == "e-quality")["result"] = "fail"
+        payload["evidence_lanes"]["probabilistic-eval"]["status"] = "FAIL"
+        result = self.compute(payload)
+        self.assertEqual(result["decision"], "NOT_READY")
+        self.assertEqual(result["evidence_lanes"]["failed"], ["probabilistic-eval"])
+        self.assertEqual(result["evidence_lanes"]["lanes"]["deterministic-checks"]["status"], "PASS")
+
+    def test_lane_evidence_cannot_be_reused(self):
+        payload = base_payload()
+        payload["evidence_lanes"]["critical-journey-e2e"]["evidence_ids"] = ["e-deterministic"]
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertIn("classified as", caught.exception.message)
+
+    def test_structural_test_cannot_satisfy_critical_journey(self):
+        payload = base_payload()
+        journey = next(item for item in payload["evidence"] if item["id"] == "e-journey")
+        journey["kind"] = "test"
+        journey["lane"] = "structural"
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertEqual(
+            caught.exception.path,
+            "$.evidence_lanes.critical-journey-e2e.evidence_ids",
+        )
+        self.assertIn("structural", caught.exception.message)
+
+    def test_structural_test_cannot_satisfy_probabilistic_eval(self):
+        payload = base_payload()
+        next(item for item in payload["evidence"] if item["id"] == "e-quality")["kind"] = "test"
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertIn("allowed kinds", caught.exception.message)
+
+    def test_public_release_requires_continuous_evidence(self):
+        payload = base_payload()
+        payload["evidence_lanes"]["continuous-evidence"] = {
+            "status": "UNVERIFIED",
+            "evidence_ids": [],
+            "reason": "No deployed canary yet",
+        }
+        result = self.compute(payload)
+        self.assertEqual(result["decision"], "INSUFFICIENT_EVIDENCE")
+        self.assertEqual(result["evidence_lanes"]["unverified_required"], ["continuous-evidence"])
+
+    def test_local_component_review_can_mark_online_and_quality_lanes_not_applicable(self):
+        payload = base_payload()
+        payload["publish_target"] = "local-prototype"
+        payload["evidence_lanes"]["probabilistic-eval"] = {
+            "status": "N/A",
+            "evidence_ids": [],
+            "reason": "Component-only loop review makes no task-quality claim",
+        }
+        payload["evidence_lanes"]["continuous-evidence"] = {
+            "status": "N/A",
+            "evidence_ids": [],
+            "reason": "Local prototype has no deployment",
+        }
+        payload["quality_evaluation"] = {
+            "applicability": "not-applicable",
+            "reason": "Component-only loop review makes no task-quality claim",
+        }
+        self.assertEqual(self.compute(payload)["decision"], "READY")
+
+    def test_uncalibrated_llm_judge_cannot_support_quality_pass(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["judge"]["calibration_evidence_ids"] = []
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertIn("LLM judge requires", caught.exception.message)
+
+    def test_deterministic_judge_needs_identity_but_not_llm_calibration(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["judge"].update(
+            {"kind": "deterministic", "calibration_evidence_ids": []}
+        )
+        self.rebind_quality_identity(payload)
+        self.assertEqual(self.compute(payload)["decision"], "READY")
+
+    def test_judge_digest_must_be_sha256(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["judge"]["digest"] = "judge-v1"
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertEqual(caught.exception.path, "$.quality_evaluation.judge.digest")
+
+    def test_quality_pass_must_meet_declared_thresholds(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["comparison"]["with_harness"]["successes"] = 7
+        payload["quality_evaluation"]["comparison"]["uplift"]["observed"] = 0.1
+        payload["quality_evaluation"]["task_success"]["observed"] = 0.7
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertIn("task_success", caught.exception.message)
+
+    def test_no_uplift_cannot_be_hidden_by_absolute_task_success(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["comparison"]["baseline"]["successes"] = 9
+        payload["quality_evaluation"]["comparison"]["uplift"]["observed"] = 0
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertIn("uplift", caught.exception.message)
+
+    def test_quality_comparison_requires_equal_arm_counts(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["comparison"]["baseline"]["runs"] = 9
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertIn("equal run counts", caught.exception.message)
+
+    def test_excessive_variance_cannot_pass_on_a_high_mean(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["task_success_variance"][
+            "observed_standard_deviation"
+        ] = 0.9
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertIn("task_success_variance", caught.exception.message)
+
+    def test_continuous_evidence_must_match_evaluation_identity(self):
+        payload = base_payload()
+        next(item for item in payload["evidence"] if item["id"] == "e-continuous")[
+            "identity_sha256"
+        ] = "sha256:" + "d" * 64
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertEqual(
+            caught.exception.path,
+            "$.evidence_lanes.continuous-evidence.evidence_ids",
+        )
+
+    def test_identity_tuple_change_invalidates_recorded_digest(self):
+        payload = base_payload()
+        payload["quality_evaluation"]["identity"]["model"] = "different-model@2"
+        with self.assertRaises(score_review.ValidationError) as caught:
+            score_review.validate(payload)
+        self.assertEqual(caught.exception.path, "$.quality_evaluation.identity_sha256")
 
     def test_all_requested_modes_are_supported(self):
         for mode in (
@@ -418,6 +643,72 @@ class ScoreReviewTests(unittest.TestCase):
         self.add_active_gate(payload, "license-or-provenance-breach")
         self.assertEqual(self.compute(payload)["decision"], "BLOCKED")
 
+    def test_legacy_gate_without_affected_targets_still_blocks_every_target(self):
+        payload = base_payload()
+        self.add_active_gate(payload, "broken-core-runtime")
+        result = self.compute(payload)
+        self.assertEqual(result["decision"], "BLOCKED")
+        self.assertTrue(result["vetoed"])
+        self.assertEqual(result["active_gates"], result["blocking_gates"])
+        self.assertEqual(
+            result["active_gates"][0]["affected_targets"],
+            sorted(score_review.PUBLISH_THRESHOLDS),
+        )
+
+    def test_target_scoped_gate_blocks_a_matching_target(self):
+        payload = base_payload()
+        self.add_active_gate(
+            payload,
+            "hidden-network-or-telemetry",
+            ["public-release", "privileged-production"],
+        )
+        result = self.compute(payload)
+        self.assertEqual(result["decision"], "BLOCKED")
+        self.assertEqual(result["scores"]["publish_readiness"], 39)
+        self.assertEqual(result["blocking_gates"], result["active_gates"])
+        self.assertEqual(
+            result["blocking_gates"][0]["affected_targets"],
+            ["privileged-production", "public-release"],
+        )
+
+    def test_target_scoped_gate_does_not_block_an_unaffected_target(self):
+        payload = base_payload()
+        self.add_active_gate(
+            payload,
+            "hidden-network-or-telemetry",
+            ["privileged-production", "high-stakes"],
+        )
+        result = self.compute(payload)
+        self.assertEqual(result["decision"], "READY")
+        self.assertEqual(result["scores"]["publish_readiness"], 90)
+        self.assertEqual(len(result["active_gates"]), 1)
+        self.assertEqual(result["blocking_gates"], [])
+        self.assertFalse(result["vetoed"])
+        self.assertFalse(
+            any(item["source"] == "safety-gate" for item in result["applied_caps"])
+        )
+
+    def test_affected_targets_reject_empty_duplicate_and_unknown_values(self):
+        invalid_values = (
+            ([], "at least one target"),
+            (["public-release", "public-release"], "duplicate targets"),
+            (["future-target"], "must be one of"),
+        )
+        for affected_targets, expected_message in invalid_values:
+            with self.subTest(affected_targets=affected_targets):
+                payload = base_payload()
+                self.add_active_gate(
+                    payload,
+                    "hidden-network-or-telemetry",
+                    affected_targets,
+                )
+                with self.assertRaises(score_review.ValidationError) as caught:
+                    score_review.validate(payload)
+                self.assertTrue(
+                    caught.exception.path.startswith("$.gates[0].affected_targets")
+                )
+                self.assertIn(expected_message, caught.exception.message)
+
     def test_fixed_veto_requires_reproducible_passing_retest(self):
         payload = base_payload()
         payload["gates"] = [
@@ -461,7 +752,7 @@ class ScoreReviewTests(unittest.TestCase):
     def test_required_failed_publish_check_is_not_ready(self):
         payload = base_payload()
         payload["evidence"].append(
-            {"id": "e-failure", "kind": "runtime", "result": "fail", "reproducible": True, "fresh": True}
+            {"id": "e-failure", "kind": "runtime", "result": "fail", "reproducible": True, "fresh": True, "lane": "critical-journey-e2e", "assertion_type": "deterministic"}
         )
         payload["publish_checks"] = [
             {
@@ -512,7 +803,7 @@ class ScoreReviewTests(unittest.TestCase):
     def test_verified_dimension_rejects_claim_only_evidence(self):
         payload = base_payload()
         payload["evidence"].append(
-            {"id": "e-claim", "kind": "claim", "result": "pass", "reproducible": True, "fresh": True}
+            {"id": "e-claim", "kind": "claim", "result": "pass", "reproducible": True, "fresh": True, "lane": "structural", "assertion_type": "not-applicable"}
         )
         payload["dimensions"][0]["evidence_ids"] = ["e-claim"]
         with self.assertRaises(score_review.ValidationError):

@@ -1,6 +1,6 @@
 # OpenAI Plugins Directory submission
 
-Use this sheet with the [OpenAI plugin submission portal](https://platform.openai.com/plugins). Choose **Skills only** and upload `dist/ratemyharness-plugin-1.0.0.zip`.
+Use this sheet with the [OpenAI plugin submission portal](https://platform.openai.com/plugins). Choose **Skills only** and upload `dist/ratemyharness-plugin-1.0.1.zip`.
 
 The public directory is universal: one approved listing can appear in ChatGPT and Codex. Public availability begins only after OpenAI review and the publisher's separate **Publish** action.
 
@@ -32,7 +32,7 @@ Enter the five positive and three negative cases from `submission/plugin-test-ca
 
 ## Release notes
 
-Initial 1.0.0 skills-only release. RateMyHarness adds configurable product-owner, Staff-runtime-engineer, red-team, SRE/operator, and oral-defense reviews; end-to-end runtime tracing; failure and cancellation tests; authority and isolation checks; evidence ceilings; fixed release vetoes; prioritized fixes; and same-rubric retesting. It has no MCP server, app, hosted backend, authentication, telemetry, or third-party runtime dependency.
+Version 1.0.1 update. Adds a severity-sorted one-line issue index and four non-substitutable evidence lanes; separates deterministic runtime invariants from repeated task quality; requires equal-arm baseline uplift, bounded variance, versioned judge identity, and a shared evaluation/deployment digest; scopes gates to affected targets; and migrates optional scorecards to fail-closed schema v2.
 
 ## Package contents
 

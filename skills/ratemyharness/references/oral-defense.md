@@ -5,8 +5,8 @@ Use this route to test whether the author understands the actual harness. Score 
 ## Procedure
 
 1. Complete the role and degree gate before inspecting the artifact.
-2. Build an evidence inventory and risk map.
-3. Select a question from `references/concept-probes.md` only when the artifact makes that concept relevant.
+2. Build an evidence inventory and identify a reachable runtime decision or failure.
+3. Only then read the generator in `references/concept-probes.md`; do not load probe guidance at route selection.
 4. Ask exactly one question and wait.
 5. Score the answer, explain the missing consequence, and ask the next question.
 6. Stop at the agreed count or when the user ends the defense.

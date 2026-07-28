@@ -5,7 +5,24 @@
     "runs_per_arm": 2,
     "arms": ["with_skill", "without_skill"],
     "report_deltas": ["assertion_pass_rate", "elapsed_time", "tokens"],
-    "drop_assertions_that_both_arms_always_pass": true
+    "drop_assertions_that_both_arms_always_pass": true,
+    "evidence_status": "specification-only-until-fresh-runs-are-captured",
+    "required_evidence_lanes": [
+      "deterministic-checks",
+      "critical-journey-e2e",
+      "probabilistic-eval",
+      "continuous-evidence"
+    ],
+    "required_quality_identity": [
+      "harness_build",
+      "model",
+      "prompt",
+      "tool_schemas",
+      "retrieval_data",
+      "dataset",
+      "rubric",
+      "judge"
+    ]
   },
   "cases": [
     {
@@ -29,7 +46,9 @@
         "Separates the model choosing a next action, the loop repeating actions, and the harness enforcing runtime controls",
         "Uses the configuration and trace to identify missing step, tool-call, wall-clock, token, and cost limits plus cancellation that is received but not propagated",
         "Does not execute an unbounded loop; any replay is explicitly bounded and uses only inert fixture data",
-        "Activates the unbounded-or-uncancellable-loop veto, returns BLOCKED, and supplies acceptance tests for budgets, cancellation, and terminal states"
+        "Activates the unbounded-or-uncancellable-loop veto, returns BLOCKED, and supplies acceptance tests for budgets, cancellation, and terminal states",
+        "Begins with a severity-sorted one-line problem list in `failure — consequence` form, followed by a separate one-line-per-item `待验证` list before any score or technical detail",
+        "Reports deterministic-checks as FAIL independently of critical-journey-e2e, probabilistic-eval, and continuous-evidence; no green lane offsets the termination failure"
       ]
     },
     {
@@ -99,8 +118,13 @@
       "prompt": "As the harness owner, strictly review whether this runtime is worth adopting across the team.",
       "skill_specific_assertions": [
         "Does not equate a valid configuration, passing smoke test, or architectural sophistication with behavioral value",
-        "Designs isolated with-harness and baseline runs on identical tasks with hidden assertions and fixed tools, model, permissions, and stopping conditions",
-        "Compares task success, safety violations, user interventions, latency, token or context cost, and reproducibility",
+        "States that green repository CI and valid fixture files are structural checks rather than proof of real harness behavior",
+        "Classifies evidence by lane and assertion type so a structural test cannot satisfy critical-journey-e2e",
+        "Designs isolated equal-count with-harness and baseline runs on identical tasks with hidden assertions and fixed tools, model, permissions, and stopping conditions",
+        "Requires arm successes, count-derived observed uplift, a positive minimum uplift, and task-success thresholds",
+        "Requires observed and maximum standard deviation plus a variance policy, cost per success, and p95 latency",
+        "Records judge kind, ID, version, and digest, and requires fresh calibration evidence for an LLM judge",
+        "Binds probabilistic and continuous evidence to the SHA-256 of the full harness/build-model-prompt-tools-data-dataset-rubric-judge identity tuple",
         "Reports INSUFFICIENT EVIDENCE for uplift until improvement repeats and proposes the cheapest falsifiable benchmark"
       ]
     }

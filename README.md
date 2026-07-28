@@ -79,12 +79,12 @@ Author understanding is scored separately. Weak answers do not erase verified ru
 
 ## What it audits
 
-1. Task and loop correctness, including tool-call/result correlation and truthful completion.
-2. Tool execution, authorization, concurrency, idempotency, and partial side effects.
+1. Zero-tolerance deterministic runtime invariants: authority, correlation, isolation, idempotency, termination, and truthful state.
+2. Probabilistic task quality: repeated success, unsafe outcomes, variance, latency, and cost per successful task.
 3. Context ordering, provenance, truncation, persistent state, memory, and session isolation.
 4. Timeouts, retry budgets, cancellation, checkpoints, resume, and deterministic termination.
 5. Permissions, sandboxing, approvals, untrusted input, secrets, network, and tenant boundaries.
-6. Queues, backpressure, rollout, rollback, tracing, incident recovery, latency, and cost.
+6. Queues, backpressure, tracing, incident recovery, and—only for public or higher targets—drift, canaries, and rollback.
 7. Measurable task uplift over the simplest credible plain-loop or previous-runtime baseline.
 
 It uses hard vetoes for authority bypass, cross-boundary data leakage, untrusted content controlling the runtime, runaway execution, duplicate irreversible effects, fabricated completion, unsafe code execution, hidden network behavior, broken core runtime paths, and license breaches. A good average cannot cancel one of those failures.
@@ -92,6 +92,17 @@ It uses hard vetoes for authority bypass, cross-boundary data leakage, untrusted
 ## Verdict
 
 ```text
+Issue list:
+- [H-002 · BLOCKER] Cancellation does not stop tool calls — the agent keeps spending money after the user presses Stop.
+待验证:
+- [U-003 · UNVERIFIED] Tenant isolation has not been exercised — one user's data may be exposed to another user.
+
+Evidence lanes:
+- deterministic-checks: FAIL
+- critical-journey-e2e: PASS
+- probabilistic-eval: UNVERIFIED
+- continuous-evidence: N/A — local prototype has no deployment
+
 Requested target:
 Maximum safe target:
 Decision: READY | READY WITH CONDITIONS | NOT READY | BLOCKED | INSUFFICIENT EVIDENCE
@@ -109,13 +120,17 @@ Top 3 actions:
 Retest plan:
 ```
 
+Every completed verdict starts with every verified issue, severity-sorted, as one plain-language line containing severity, failure, and consequence. Unverified items appear separately under `待验证`; fixes, evidence, and technical detail stay below, and only the next-action list is capped at three.
+
+The four evidence lanes are independent and use only `PASS`, `FAIL`, `UNVERIFIED`, or `N/A`. Every evidence item declares its lane and assertion type, so a structural repository test cannot masquerade as a critical E2E run. Deterministic checks cannot hide poor task success, and a strong model cannot hide a broken runtime. Probabilistic evidence records equal-arm successes, count-derived uplift, thresholds, bounded variance, cost per success, latency, and the exact harness/build, model, prompt, tool-schema, retrieval/data, dataset, rubric, and judge identity. Every judge has a kind, ID, version, and digest; an LLM judge also needs calibration.
+
 Every finding includes exact reproduction, expected and actual behavior, evidence strength, impact, the smallest safe fix, an acceptance test, and a neighboring regression case.
 
 ## Why this is not another code reviewer
 
 A code reviewer can find local bugs. RateMyHarness follows runtime invariants across components: approval to dispatch, tool call to result, retry to external effect, session to memory, cancellation to cleanup, checkpoint to resume, and trace to terminal claim.
 
-A valid configuration proves structure, not value. Public or privileged approval requires fresh end-to-end runs, failure injection, deploy evidence, authority tests, and a comparison with a simpler baseline.
+A valid configuration or green repository CI proves structure, not real harness behavior. Public or privileged approval requires fresh critical-journey runs, deterministic failure injection, repeated quality evals, deploy evidence, authority tests, continuous signals, and a comparison with a simpler baseline.
 
 ## Scoring
 
@@ -125,7 +140,9 @@ The optional scorer is deterministic and uses only the Python standard library:
 python3 skills/ratemyharness/scripts/score_review.py --pretty evals/scorecards/blocked-release.json
 ```
 
-It validates evidence links and weights, enforces target-specific checks, fingerprints the rubric for re-review, and always turns an active veto into `BLOCKED`.
+It validates evidence links and weights, enforces target-specific non-substitutable lanes, recomputes task success and uplift from equal-arm counts, gates excessive variance, verifies judge identity, and binds probabilistic and continuous evidence to one identity SHA-256. An active gate may optionally list exact `affected_targets`: omitting the field preserves the legacy all-target block, while output separates all `active_gates` from the `blocking_gates` that affect the requested target.
+
+Scorecard schema v2 is a fail-closed migration. Existing v1 scorecards must add each evidence item's `lane` and `assertion_type`, the complete four-lane panel, and `quality_evaluation`; old evidence must not be relabeled fresh without rerunning it.
 
 ## Trust and safety
 
@@ -158,7 +175,7 @@ claude plugin validate . --strict
 python3 /path/to/plugin-creator/scripts/validate_plugin.py plugins/ratemyharness
 ```
 
-Contributions must include behavioral evidence, not only a prose diff. Read [CONTRIBUTING.md](CONTRIBUTING.md).
+These commands validate repository structure, fixtures, and scorer behavior; a green result is not evidence that RateMyHarness or an audited harness performed well in a real model run. Contributions must include captured behavioral evidence, not only a prose diff. Read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 This repository's authoring approach is informed by [从零做一个高质量 Agent Skill，并把它当开源项目运营](https://research.xishe.ai/skill-authoring-and-oss), especially its guidance on description-first discovery, progressive disclosure, separated trigger and execution evals, reference integrity, zero-dependency scripts, and open-source distribution.
 

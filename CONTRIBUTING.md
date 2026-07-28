@@ -12,7 +12,7 @@ Every behavior-changing pull request should include:
 4. an explanation of any frontmatter `description` change; and
 5. a same-rubric comparison when scoring or verdict behavior changes.
 
-A prose-only rewrite is not proof of improvement. Prefer a small reference, deterministic helper, or evaluation case that changes measurable behavior.
+A prose-only rewrite is not proof of improvement. Green repository CI, fixture validation, and scorer unit tests are structural evidence only; include fresh captured with-Skill and without-Skill runs before claiming behavior improved. Prefer a small reference, deterministic helper, or evaluation case that changes measurable behavior.
 
 ## Local checks
 
@@ -26,7 +26,7 @@ Keep scripts on the Python standard library unless a dependency is essential and
 
 ## Pull-request hygiene
 
-- Keep the harness/loop boundary, safety vetoes, and non-negotiable rules in the main `SKILL.md`.
+- Keep the harness/loop boundary and runtime invariants in the main `SKILL.md`; keep evidence ceilings, veto IDs, and decision rules in the always-loaded `references/review-contract.md`.
 - Keep references one level deep and valid on case-sensitive filesystems.
 - Run `python3 scripts/sync_codex_plugin.py` after changing the canonical Skill.
 - Keep Claude and Codex plugin versions aligned when published contents change.

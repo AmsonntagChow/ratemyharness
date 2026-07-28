@@ -13,10 +13,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "skills" / "ratemyharness"
 DESTINATION = ROOT / "plugins" / "ratemyharness" / "skills" / "ratemyharness"
+IGNORED_NAMES = {"__pycache__"}
+IGNORED_SUFFIXES = {".pyc", ".pyo"}
 
 
 def relative_files(root: Path) -> list[Path]:
-    return sorted(path.relative_to(root) for path in root.rglob("*") if path.is_file())
+    return sorted(
+        path.relative_to(root)
+        for path in root.rglob("*")
+        if path.is_file()
+        and not IGNORED_NAMES.intersection(path.relative_to(root).parts)
+        and path.suffix not in IGNORED_SUFFIXES
+    )
 
 
 def compare() -> list[str]:
@@ -45,7 +53,11 @@ def sync() -> None:
     if DESTINATION.exists():
         shutil.rmtree(DESTINATION)
     DESTINATION.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(SOURCE, DESTINATION)
+    shutil.copytree(
+        SOURCE,
+        DESTINATION,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
+    )
 
 
 def main() -> int:

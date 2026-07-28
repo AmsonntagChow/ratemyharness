@@ -27,6 +27,8 @@ Trace identifiers across model response, tool call, tool attempt, tool result, s
 
 Test a normal run plus malformed tool arguments, ambiguous timeout after an effect, duplicate result, late result after cancellation, process restart at a checkpoint, context limit pressure, and exhausted budget. Use inert adapters and deterministic clocks where possible.
 
+Treat authority, correlation, isolation, idempotency, termination, and truthfulness as deterministic zero-tolerance invariants. Do not average one failure into task-quality results, and do not let high task success stand in for these checks.
+
 ## Findings
 
 Name the violated invariant before proposing a pattern or library. Prefer the smallest enforceable fix: a state transition guard, stable idempotency key, independent authorization check, bounded counter, typed result schema, or explicit terminal reason.

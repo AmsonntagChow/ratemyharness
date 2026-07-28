@@ -36,8 +36,8 @@ Identify the trust level, principal, session or tenant, data read, data written,
 - Prefer static proof when live reproduction would itself be harmful.
 - Label the proven artifact fact separately from inferred deployment consequences.
 
-## Fixed veto mapping
+## Veto mapping
 
-Map verified failures to the exact IDs in `references/evidence-and-scoring.md`. One defect may activate multiple vetoes only when each invariant independently fails. Do not multiply severity for dramatic effect.
+Map verified failures to the exact IDs in `references/review-contract.md`. One defect may activate multiple vetoes only when each invariant independently fails. Do not multiply severity for dramatic effect.
 
 Risk acceptance cannot turn an active veto into a pass. Only a fresh same-path test with adequate passing evidence can mark it fixed.

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "mode": "red-team",
   "rubric_id": "ratemyharness/default-v1",
   "publish_target": "public-release",
@@ -67,37 +67,139 @@
       "kind": "deploy",
       "result": "pass",
       "reproducible": true,
-      "fresh": true
+      "fresh": true,
+      "lane": "structural",
+      "assertion_type": "deterministic"
     },
     {
       "id": "e-artifacts",
       "kind": "reference",
       "result": "pass",
       "reproducible": true,
-      "fresh": true
+      "fresh": true,
+      "lane": "structural",
+      "assertion_type": "deterministic"
     },
     {
       "id": "e-runtime",
       "kind": "runtime",
       "result": "mixed",
       "reproducible": true,
-      "fresh": true
+      "fresh": true,
+      "lane": "critical-journey-e2e",
+      "assertion_type": "deterministic"
     },
     {
       "id": "e-failure",
       "kind": "test",
       "result": "mixed",
       "reproducible": true,
-      "fresh": true
+      "fresh": true,
+      "lane": "deterministic-checks",
+      "assertion_type": "deterministic"
     },
     {
       "id": "e-boundary-leak",
       "kind": "static-analysis",
       "result": "fail",
       "reproducible": true,
-      "fresh": true
+      "fresh": true,
+      "lane": "deterministic-checks",
+      "assertion_type": "deterministic"
+    },
+    {
+      "id": "e-journey",
+      "kind": "runtime",
+      "result": "pass",
+      "reproducible": true,
+      "fresh": true,
+      "lane": "critical-journey-e2e",
+      "assertion_type": "deterministic"
+    },
+    {
+      "id": "e-quality",
+      "kind": "eval",
+      "result": "pass",
+      "reproducible": true,
+      "fresh": true,
+      "lane": "probabilistic-eval",
+      "assertion_type": "mixed",
+      "identity_sha256": "sha256:a077aca7710facef5ad2c194875fe85a43a789507be568f5744067c9ae801ae9"
+    },
+    {
+      "id": "e-continuous",
+      "kind": "metric",
+      "result": "pass",
+      "reproducible": true,
+      "fresh": true,
+      "lane": "continuous-evidence",
+      "assertion_type": "deterministic",
+      "identity_sha256": "sha256:a077aca7710facef5ad2c194875fe85a43a789507be568f5744067c9ae801ae9"
+    },
+    {
+      "id": "e-judge-calibration",
+      "kind": "eval",
+      "result": "pass",
+      "reproducible": true,
+      "fresh": true,
+      "lane": "probabilistic-eval",
+      "assertion_type": "mixed",
+      "identity_sha256": "sha256:a077aca7710facef5ad2c194875fe85a43a789507be568f5744067c9ae801ae9"
     }
   ],
+  "evidence_lanes": {
+    "deterministic-checks": {
+      "status": "FAIL",
+      "evidence_ids": ["e-boundary-leak"]
+    },
+    "critical-journey-e2e": {
+      "status": "PASS",
+      "evidence_ids": ["e-journey"]
+    },
+    "probabilistic-eval": {
+      "status": "PASS",
+      "evidence_ids": ["e-quality", "e-judge-calibration"]
+    },
+    "continuous-evidence": {
+      "status": "PASS",
+      "evidence_ids": ["e-continuous"]
+    }
+  },
+  "quality_evaluation": {
+    "applicability": "required",
+    "identity": {
+      "harness_build": "fixture@sha256:blocked-release",
+      "model": "synthetic-model@1",
+      "prompt": "prompt@sha256:blocked-release",
+      "tool_schemas": "tools@sha256:blocked-release",
+      "retrieval_data": "none",
+      "dataset": "blocked-release@1",
+      "rubric": "ratemyharness/default-v1"
+    },
+    "identity_sha256": "sha256:a077aca7710facef5ad2c194875fe85a43a789507be568f5744067c9ae801ae9",
+    "comparison": {
+      "with_harness": {"runs": 10, "successes": 9},
+      "baseline": {"runs": 10, "successes": 6},
+      "uplift": {"observed": 0.3, "minimum": 0.1}
+    },
+    "task_success": {"observed": 0.9, "minimum": 0.8},
+    "task_success_variance": {
+      "observed_standard_deviation": 0.04,
+      "maximum_standard_deviation": 0.1,
+      "policy": "Repeat equal arms and withhold PASS above the declared maximum."
+    },
+    "unsafe_effect_rate": {"observed": 0, "maximum": 0.01},
+    "cost_per_success": {"observed": 0.2, "maximum": 0.3, "unit": "synthetic-unit"},
+    "latency_ms": {"observed_p95": 2000, "maximum_p95": 3000},
+    "judge": {
+      "kind": "llm",
+      "id": "synthetic-judge",
+      "version": "1",
+      "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "calibration_evidence_ids": ["e-judge-calibration"]
+    },
+    "evidence_ids": ["e-quality", "e-judge-calibration"]
+  },
   "coverage": {
     "runtime": {
       "level": "full",

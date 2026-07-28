@@ -21,6 +21,8 @@ Record service-level objectives for successful task completion, latency, cancell
 | Rollout | versioned prompts/config, canary, compatibility, rollback | in-flight runs change semantics mid-run |
 | Recovery | replay, reconciliation, dead-letter handling, incident exercise | backup exists but restore is untested |
 
+For `public-release`, `privileged-production`, and `high-stakes`, bind drift metrics, canary comparisons, and rollback signals to the exact harness/build, model, prompt, tool-schema, retrieval/data, dataset, rubric, and judge identity. Do not impose online monitoring or canary requirements on local prototypes or team-only reviews.
+
 ## Failure injection
 
 Exercise provider rate limits, slow or malformed tools, ambiguous timeouts, queue redelivery, worker death, state-store outage, context overflow, expired approval, cancellation during a tool, and process restart after a side effect. Use bounded synthetic fixtures.

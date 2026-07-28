@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = "1"
-POLICY_VERSION = "2"
+SCHEMA_VERSION = "2"
+POLICY_VERSION = "5"
 MAX_INPUT_BYTES = 1_048_576
 MAX_DIMENSIONS = 32
 MAX_EVIDENCE = 512
@@ -51,9 +51,47 @@ EVIDENCE_KINDS = {
     "log",
     "trace",
     "document",
+    "eval",
+    "metric",
     "claim",
 }
 EVIDENCE_RESULTS = {"pass", "fail", "mixed", "inconclusive"}
+LANE_STATUSES = {"PASS", "FAIL", "UNVERIFIED", "N/A"}
+EVIDENCE_LANES = {"structural"}
+EVIDENCE_LANE_SPECS = {
+    "deterministic-checks": {"runtime", "test", "static-analysis", "trace"},
+    "critical-journey-e2e": {"runtime", "test", "deploy", "trace"},
+    "probabilistic-eval": {"eval"},
+    "continuous-evidence": {"metric", "log", "trace"},
+}
+EVIDENCE_LANES.update(EVIDENCE_LANE_SPECS)
+ASSERTION_TYPES = {"deterministic", "probabilistic", "mixed", "not-applicable"}
+LANE_ASSERTION_TYPES = {
+    "deterministic-checks": {"deterministic"},
+    "critical-journey-e2e": {"deterministic", "mixed"},
+    "probabilistic-eval": {"probabilistic", "mixed"},
+    "continuous-evidence": {"deterministic", "probabilistic", "mixed"},
+}
+TARGET_REQUIRED_LANES = {
+    "local-prototype": {"deterministic-checks", "critical-journey-e2e"},
+    "team-shared": {
+        "deterministic-checks",
+        "critical-journey-e2e",
+        "probabilistic-eval",
+    },
+    "public-release": set(EVIDENCE_LANE_SPECS),
+    "privileged-production": set(EVIDENCE_LANE_SPECS),
+    "high-stakes": set(EVIDENCE_LANE_SPECS),
+}
+QUALITY_IDENTITY_FIELDS = {
+    "harness_build",
+    "model",
+    "prompt",
+    "tool_schemas",
+    "retrieval_data",
+    "dataset",
+    "rubric",
+}
 RUNTIME_LEVELS = {"full", "partial", "static", "none"}
 SELECTION_LEVELS = {"tested", "partial", "claimed", "none"}
 INSTALL_LEVELS = {"tested", "partial", "claimed", "none"}
@@ -193,6 +231,41 @@ def require_int(value: Any, path: str, minimum: int, maximum: int) -> int:
     return value
 
 
+def require_number(value: Any, path: str, minimum: Decimal, maximum: Decimal | None = None) -> int | float:
+    if type(value) not in {int, float}:
+        raise ValidationError(path, "must be a finite number")
+    number = Decimal(str(value))
+    if number < minimum or (maximum is not None and number > maximum):
+        upper = f" and <= {maximum}" if maximum is not None else ""
+        raise ValidationError(path, f"must be >= {minimum}{upper}; received {value}")
+    return value
+
+
+def require_sha256(value: Any, path: str) -> str:
+    digest = require_string(value, path)
+    if len(digest) != 71 or not digest.startswith("sha256:"):
+        raise ValidationError(path, "must use sha256:<64 lowercase hex characters>")
+    if any(character not in "0123456789abcdef" for character in digest[7:]):
+        raise ValidationError(path, "must use sha256:<64 lowercase hex characters>")
+    return digest
+
+
+def quality_identity_sha256(identity: dict[str, str], judge: dict[str, Any]) -> str:
+    payload = {
+        "identity": {field: identity[field] for field in sorted(QUALITY_IDENTITY_FIELDS)},
+        "judge": {
+            "digest": judge["digest"],
+            "id": judge["id"],
+            "kind": judge["kind"],
+            "version": judge["version"],
+        },
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode(
+        "utf-8"
+    )
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
 def reject_unknown(obj: dict[str, Any], allowed: set[str], path: str) -> None:
     unknown = sorted(set(obj) - allowed)
     if unknown:
@@ -211,12 +284,13 @@ def validate_evidence(items: Any) -> tuple[list[dict[str, Any]], dict[str, dict[
         raise ValidationError("$.evidence", f"must contain at most {MAX_EVIDENCE} items")
     result: list[dict[str, Any]] = []
     by_id: dict[str, dict[str, Any]] = {}
-    allowed = {"id", "kind", "result", "reproducible", "fresh"}
+    required = {"id", "kind", "result", "reproducible", "fresh", "lane", "assertion_type"}
+    allowed = required | {"identity_sha256"}
     for index, raw in enumerate(values):
         path = f"$.evidence[{index}]"
         item = require_object(raw, path)
         reject_unknown(item, allowed, path)
-        require_fields(item, allowed, path)
+        require_fields(item, required, path)
         evidence_id = require_string(item["id"], f"{path}.id")
         if evidence_id in by_id:
             raise ValidationError(f"{path}.id", f"duplicate evidence id {evidence_id!r}")
@@ -226,7 +300,15 @@ def validate_evidence(items: Any) -> tuple[list[dict[str, Any]], dict[str, dict[
             "result": require_string(item["result"], f"{path}.result", EVIDENCE_RESULTS),
             "reproducible": require_bool(item["reproducible"], f"{path}.reproducible"),
             "fresh": require_bool(item["fresh"], f"{path}.fresh"),
+            "lane": require_string(item["lane"], f"{path}.lane", EVIDENCE_LANES),
+            "assertion_type": require_string(
+                item["assertion_type"], f"{path}.assertion_type", ASSERTION_TYPES
+            ),
         }
+        if "identity_sha256" in item:
+            normalized["identity_sha256"] = require_sha256(
+                item["identity_sha256"], f"{path}.identity_sha256"
+            )
         by_id[evidence_id] = normalized
         result.append(normalized)
     return sorted(result, key=lambda item: item["id"]), by_id
@@ -249,6 +331,19 @@ def validate_evidence_ids(
     return sorted(ids)
 
 
+def validate_affected_targets(value: Any, path: str) -> list[str]:
+    values = require_list(value, path)
+    if not values:
+        raise ValidationError(path, "must contain at least one target; omit the field to affect all targets")
+    targets = [
+        require_string(item, f"{path}[{index}]", set(PUBLISH_THRESHOLDS))
+        for index, item in enumerate(values)
+    ]
+    if len(targets) != len(set(targets)):
+        raise ValidationError(path, "must not contain duplicate targets")
+    return sorted(targets)
+
+
 def has_reproducible_non_claim(ids: list[str], evidence: dict[str, dict[str, Any]]) -> bool:
     return any(evidence[item]["kind"] != "claim" and evidence[item]["reproducible"] for item in ids)
 
@@ -267,6 +362,405 @@ def has_reproducible_result(
         and (not require_fresh or evidence[item]["fresh"])
         for item in ids
     )
+
+
+def validate_evidence_lanes(
+    value: Any,
+    evidence_by_id: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    lanes = require_object(value, "$.evidence_lanes")
+    expected = set(EVIDENCE_LANE_SPECS)
+    reject_unknown(lanes, expected, "$.evidence_lanes")
+    require_fields(lanes, expected, "$.evidence_lanes")
+    normalized: dict[str, dict[str, Any]] = {}
+    used_evidence: dict[str, str] = {}
+    for lane_id in EVIDENCE_LANE_SPECS:
+        path = f"$.evidence_lanes.{lane_id}"
+        lane = require_object(lanes[lane_id], path)
+        allowed = {"status", "evidence_ids", "reason"}
+        reject_unknown(lane, allowed, path)
+        require_fields(lane, {"status", "evidence_ids"}, path)
+        status = require_string(lane["status"], f"{path}.status", LANE_STATUSES)
+        evidence_ids = validate_evidence_ids(
+            lane["evidence_ids"], f"{path}.evidence_ids", evidence_by_id
+        )
+        reason = lane.get("reason")
+        if reason is not None:
+            reason = require_string(reason, f"{path}.reason")
+        if status in {"UNVERIFIED", "N/A"} and evidence_ids:
+            raise ValidationError(
+                f"{path}.evidence_ids", f"must be empty when status is {status}"
+            )
+        if status == "N/A":
+            if not reason:
+                raise ValidationError(f"{path}.reason", "N/A requires a concrete scope reason")
+        allowed_kinds = EVIDENCE_LANE_SPECS[lane_id]
+        allowed_assertions = LANE_ASSERTION_TYPES[lane_id]
+        for evidence_id in evidence_ids:
+            evidence = evidence_by_id[evidence_id]
+            if evidence["lane"] != lane_id:
+                raise ValidationError(
+                    f"{path}.evidence_ids",
+                    f"{evidence_id!r} is classified as {evidence['lane']!r}; structural or other-lane evidence cannot satisfy {lane_id!r}",
+                )
+            if evidence["kind"] not in allowed_kinds:
+                raise ValidationError(
+                    f"{path}.evidence_ids",
+                    f"{evidence_id!r} has kind {evidence['kind']!r}; allowed kinds are {sorted(allowed_kinds)}",
+                )
+            if evidence["assertion_type"] not in allowed_assertions:
+                raise ValidationError(
+                    f"{path}.evidence_ids",
+                    f"{evidence_id!r} has assertion_type {evidence['assertion_type']!r}; allowed values are {sorted(allowed_assertions)}",
+                )
+            prior_lane = used_evidence.get(evidence_id)
+            if prior_lane is not None:
+                raise ValidationError(
+                    f"{path}.evidence_ids",
+                    f"{evidence_id!r} is already assigned to {prior_lane!r}; evidence lanes cannot substitute for one another",
+                )
+            used_evidence[evidence_id] = lane_id
+        if status == "PASS":
+            if not has_reproducible_result(
+                evidence_ids,
+                evidence_by_id,
+                allowed_kinds,
+                {"pass"},
+                require_fresh=True,
+            ):
+                raise ValidationError(
+                    f"{path}.evidence_ids",
+                    "PASS requires fresh, reproducible passing evidence of a lane-appropriate kind",
+                )
+            contradictory = [
+                evidence_id
+                for evidence_id in evidence_ids
+                if evidence_by_id[evidence_id]["result"] in {"fail", "mixed"}
+            ]
+            if contradictory:
+                raise ValidationError(
+                    f"{path}.evidence_ids",
+                    f"PASS cannot include failing or mixed evidence: {', '.join(contradictory)}",
+                )
+        if status == "FAIL" and not has_reproducible_result(
+            evidence_ids,
+            evidence_by_id,
+            allowed_kinds,
+            {"fail", "mixed"},
+        ):
+            raise ValidationError(
+                f"{path}.evidence_ids",
+                "FAIL requires reproducible failing or mixed evidence of a lane-appropriate kind",
+            )
+        normalized_lane = {"status": status, "evidence_ids": evidence_ids}
+        if reason is not None:
+            normalized_lane["reason"] = reason
+        normalized[lane_id] = normalized_lane
+    return normalized
+
+
+def validate_rate_metric(value: Any, path: str, threshold_name: str) -> dict[str, Any]:
+    metric = require_object(value, path)
+    allowed = {"observed", threshold_name}
+    reject_unknown(metric, allowed, path)
+    require_fields(metric, allowed, path)
+    return {
+        "observed": require_number(metric["observed"], f"{path}.observed", Decimal("0"), Decimal("1")),
+        threshold_name: require_number(
+            metric[threshold_name], f"{path}.{threshold_name}", Decimal("0"), Decimal("1")
+        ),
+    }
+
+
+def validate_arm(value: Any, path: str) -> dict[str, int]:
+    arm = require_object(value, path)
+    allowed = {"runs", "successes"}
+    reject_unknown(arm, allowed, path)
+    require_fields(arm, allowed, path)
+    runs = require_int(arm["runs"], f"{path}.runs", 2, 100_000)
+    successes = require_int(arm["successes"], f"{path}.successes", 0, runs)
+    return {"runs": runs, "successes": successes}
+
+
+def close_rate(first: Decimal, second: Decimal) -> bool:
+    return abs(first - second) <= Decimal("0.000001")
+
+
+def validate_quality_evaluation(
+    value: Any,
+    evidence_by_id: dict[str, dict[str, Any]],
+    probabilistic_lane: dict[str, Any],
+) -> dict[str, Any]:
+    path = "$.quality_evaluation"
+    quality = require_object(value, path)
+    applicability = require_string(
+        quality.get("applicability"), f"{path}.applicability", {"required", "not-applicable"}
+    )
+    lane_status = probabilistic_lane["status"]
+    if applicability == "not-applicable":
+        reject_unknown(quality, {"applicability", "reason"}, path)
+        require_fields(quality, {"applicability", "reason"}, path)
+        reason = require_string(quality["reason"], f"{path}.reason")
+        if lane_status != "N/A":
+            raise ValidationError(path, "not-applicable quality evaluation requires probabilistic-eval status N/A")
+        return {"applicability": applicability, "reason": reason}
+
+    if lane_status == "N/A":
+        raise ValidationError(path, "required quality evaluation cannot use probabilistic-eval status N/A")
+    if lane_status == "UNVERIFIED":
+        reject_unknown(quality, {"applicability", "reason"}, path)
+        require_fields(quality, {"applicability", "reason"}, path)
+        return {
+            "applicability": applicability,
+            "reason": require_string(quality["reason"], f"{path}.reason"),
+        }
+
+    required = {
+        "applicability",
+        "identity",
+        "identity_sha256",
+        "comparison",
+        "task_success",
+        "task_success_variance",
+        "unsafe_effect_rate",
+        "cost_per_success",
+        "latency_ms",
+        "judge",
+        "evidence_ids",
+    }
+    reject_unknown(quality, required, path)
+    require_fields(quality, required, path)
+
+    identity = require_object(quality["identity"], f"{path}.identity")
+    reject_unknown(identity, QUALITY_IDENTITY_FIELDS, f"{path}.identity")
+    require_fields(identity, QUALITY_IDENTITY_FIELDS, f"{path}.identity")
+    normalized_identity = {
+        field: require_string(identity[field], f"{path}.identity.{field}")
+        for field in sorted(QUALITY_IDENTITY_FIELDS)
+    }
+
+    evidence_ids = validate_evidence_ids(
+        quality["evidence_ids"], f"{path}.evidence_ids", evidence_by_id
+    )
+    if evidence_ids != probabilistic_lane["evidence_ids"]:
+        raise ValidationError(
+            f"{path}.evidence_ids",
+            "must exactly match the probabilistic-eval lane evidence_ids",
+        )
+    if not has_reproducible_result(
+        evidence_ids,
+        evidence_by_id,
+        {"eval"},
+        {"pass", "fail", "mixed"},
+        require_fresh=True,
+    ):
+        raise ValidationError(
+            f"{path}.evidence_ids", "quality summary requires fresh, reproducible eval evidence"
+        )
+
+    judge = require_object(quality["judge"], f"{path}.judge")
+    judge_fields = {"kind", "id", "version", "digest", "calibration_evidence_ids"}
+    reject_unknown(judge, judge_fields, f"{path}.judge")
+    require_fields(judge, judge_fields, f"{path}.judge")
+    judge_kind = require_string(
+        judge["kind"], f"{path}.judge.kind", {"deterministic", "llm"}
+    )
+    normalized_judge = {
+        "kind": judge_kind,
+        "id": require_string(judge["id"], f"{path}.judge.id"),
+        "version": require_string(judge["version"], f"{path}.judge.version"),
+        "digest": require_sha256(judge["digest"], f"{path}.judge.digest"),
+        "calibration_evidence_ids": validate_evidence_ids(
+            judge["calibration_evidence_ids"],
+            f"{path}.judge.calibration_evidence_ids",
+            evidence_by_id,
+        ),
+    }
+    calibration_ids = normalized_judge["calibration_evidence_ids"]
+    if judge_kind == "deterministic" and calibration_ids:
+        raise ValidationError(
+            f"{path}.judge.calibration_evidence_ids",
+            "a deterministic judge does not use LLM calibration evidence",
+        )
+    if judge_kind == "llm":
+        if not set(calibration_ids).issubset(evidence_ids):
+            raise ValidationError(
+                f"{path}.judge.calibration_evidence_ids",
+                "LLM judge calibration evidence must be part of the probabilistic-eval lane",
+            )
+        if not has_reproducible_result(
+            calibration_ids,
+            evidence_by_id,
+            {"eval"},
+            {"pass"},
+            require_fresh=True,
+        ):
+            raise ValidationError(
+                f"{path}.judge.calibration_evidence_ids",
+                "an LLM judge requires fresh, reproducible passing calibration eval evidence",
+            )
+
+    expected_identity_sha256 = quality_identity_sha256(normalized_identity, normalized_judge)
+    identity_sha256 = require_sha256(
+        quality["identity_sha256"], f"{path}.identity_sha256"
+    )
+    if identity_sha256 != expected_identity_sha256:
+        raise ValidationError(
+            f"{path}.identity_sha256",
+            f"does not match the normalized evaluation identity; expected {expected_identity_sha256}",
+        )
+
+    comparison_path = f"{path}.comparison"
+    comparison = require_object(quality["comparison"], comparison_path)
+    comparison_fields = {"with_harness", "baseline", "uplift"}
+    reject_unknown(comparison, comparison_fields, comparison_path)
+    require_fields(comparison, comparison_fields, comparison_path)
+    with_harness = validate_arm(comparison["with_harness"], f"{comparison_path}.with_harness")
+    baseline = validate_arm(comparison["baseline"], f"{comparison_path}.baseline")
+    if with_harness["runs"] != baseline["runs"]:
+        raise ValidationError(
+            comparison_path, "with_harness and baseline must use equal run counts"
+        )
+    with_rate = Decimal(with_harness["successes"]) / Decimal(with_harness["runs"])
+    baseline_rate = Decimal(baseline["successes"]) / Decimal(baseline["runs"])
+    computed_uplift = with_rate - baseline_rate
+    uplift = require_object(comparison["uplift"], f"{comparison_path}.uplift")
+    reject_unknown(uplift, {"observed", "minimum"}, f"{comparison_path}.uplift")
+    require_fields(uplift, {"observed", "minimum"}, f"{comparison_path}.uplift")
+    observed_uplift = require_number(
+        uplift["observed"], f"{comparison_path}.uplift.observed", Decimal("-1"), Decimal("1")
+    )
+    minimum_uplift = require_number(
+        uplift["minimum"], f"{comparison_path}.uplift.minimum", Decimal("0"), Decimal("1")
+    )
+    if Decimal(str(minimum_uplift)) <= 0:
+        raise ValidationError(
+            f"{comparison_path}.uplift.minimum",
+            "must be greater than zero when product value is in scope",
+        )
+    if not close_rate(Decimal(str(observed_uplift)), computed_uplift):
+        raise ValidationError(
+            f"{comparison_path}.uplift.observed",
+            f"must match arm results; expected {computed_uplift}",
+        )
+
+    task_success = validate_rate_metric(quality["task_success"], f"{path}.task_success", "minimum")
+    if not close_rate(Decimal(str(task_success["observed"])), with_rate):
+        raise ValidationError(
+            f"{path}.task_success.observed",
+            f"must match with_harness successes/runs; expected {with_rate}",
+        )
+    variance_path = f"{path}.task_success_variance"
+    variance = require_object(quality["task_success_variance"], variance_path)
+    variance_fields = {"observed_standard_deviation", "maximum_standard_deviation", "policy"}
+    reject_unknown(variance, variance_fields, variance_path)
+    require_fields(variance, variance_fields, variance_path)
+    normalized_variance = {
+        "observed_standard_deviation": require_number(
+            variance["observed_standard_deviation"],
+            f"{variance_path}.observed_standard_deviation",
+            Decimal("0"),
+            Decimal("1"),
+        ),
+        "maximum_standard_deviation": require_number(
+            variance["maximum_standard_deviation"],
+            f"{variance_path}.maximum_standard_deviation",
+            Decimal("0"),
+            Decimal("1"),
+        ),
+        "policy": require_string(variance["policy"], f"{variance_path}.policy"),
+    }
+    unsafe_effect_rate = validate_rate_metric(
+        quality["unsafe_effect_rate"], f"{path}.unsafe_effect_rate", "maximum"
+    )
+
+    cost = require_object(quality["cost_per_success"], f"{path}.cost_per_success")
+    reject_unknown(cost, {"observed", "maximum", "unit"}, f"{path}.cost_per_success")
+    require_fields(cost, {"observed", "maximum", "unit"}, f"{path}.cost_per_success")
+    normalized_cost = {
+        "observed": require_number(cost["observed"], f"{path}.cost_per_success.observed", Decimal("0")),
+        "maximum": require_number(cost["maximum"], f"{path}.cost_per_success.maximum", Decimal("0")),
+        "unit": require_string(cost["unit"], f"{path}.cost_per_success.unit"),
+    }
+
+    latency = require_object(quality["latency_ms"], f"{path}.latency_ms")
+    reject_unknown(latency, {"observed_p95", "maximum_p95"}, f"{path}.latency_ms")
+    require_fields(latency, {"observed_p95", "maximum_p95"}, f"{path}.latency_ms")
+    normalized_latency = {
+        "observed_p95": require_number(
+            latency["observed_p95"], f"{path}.latency_ms.observed_p95", Decimal("0")
+        ),
+        "maximum_p95": require_number(
+            latency["maximum_p95"], f"{path}.latency_ms.maximum_p95", Decimal("0")
+        ),
+    }
+
+    normalized = {
+        "applicability": applicability,
+        "identity": normalized_identity,
+        "identity_sha256": identity_sha256,
+        "comparison": {
+            "with_harness": with_harness,
+            "baseline": baseline,
+            "uplift": {
+                "observed": observed_uplift,
+                "minimum": minimum_uplift,
+            },
+        },
+        "task_success": task_success,
+        "task_success_variance": normalized_variance,
+        "unsafe_effect_rate": unsafe_effect_rate,
+        "cost_per_success": normalized_cost,
+        "latency_ms": normalized_latency,
+        "judge": normalized_judge,
+        "evidence_ids": evidence_ids,
+    }
+    if lane_status == "PASS":
+        failed_thresholds = []
+        if Decimal(str(task_success["observed"])) < Decimal(str(task_success["minimum"])):
+            failed_thresholds.append("task_success")
+        if Decimal(str(observed_uplift)) < Decimal(str(minimum_uplift)):
+            failed_thresholds.append("uplift")
+        if Decimal(str(normalized_variance["observed_standard_deviation"])) > Decimal(
+            str(normalized_variance["maximum_standard_deviation"])
+        ):
+            failed_thresholds.append("task_success_variance")
+        if Decimal(str(unsafe_effect_rate["observed"])) > Decimal(str(unsafe_effect_rate["maximum"])):
+            failed_thresholds.append("unsafe_effect_rate")
+        if Decimal(str(normalized_cost["observed"])) > Decimal(str(normalized_cost["maximum"])):
+            failed_thresholds.append("cost_per_success")
+        if Decimal(str(normalized_latency["observed_p95"])) > Decimal(str(normalized_latency["maximum_p95"])):
+            failed_thresholds.append("latency_ms")
+        if failed_thresholds:
+            raise ValidationError(
+                path,
+                f"probabilistic-eval PASS contradicts failed threshold(s): {', '.join(failed_thresholds)}",
+            )
+    return normalized
+
+
+def validate_identity_bound_lanes(
+    lanes: dict[str, dict[str, Any]],
+    evidence_by_id: dict[str, dict[str, Any]],
+    quality_evaluation: dict[str, Any],
+) -> None:
+    expected_identity = quality_evaluation.get("identity_sha256")
+    for lane_id in ("probabilistic-eval", "continuous-evidence"):
+        lane = lanes[lane_id]
+        if lane["status"] not in {"PASS", "FAIL"}:
+            continue
+        if expected_identity is None:
+            raise ValidationError(
+                f"$.evidence_lanes.{lane_id}",
+                "cannot be verified without a complete evaluation identity",
+            )
+        for evidence_id in lane["evidence_ids"]:
+            actual_identity = evidence_by_id[evidence_id].get("identity_sha256")
+            if actual_identity != expected_identity:
+                raise ValidationError(
+                    f"$.evidence_lanes.{lane_id}.evidence_ids",
+                    f"{evidence_id!r} is not bound to quality_evaluation.identity_sha256",
+                )
 
 
 def validate_dimensions(
@@ -443,14 +937,15 @@ def validate_gates(
     evidence_by_id: dict[str, dict[str, Any]],
 ) -> list[dict[str, Any]]:
     values = require_list(items, "$.gates")
-    allowed = {"id", "state", "evidence_ids", "retest_evidence_ids"}
+    required = {"id", "state", "evidence_ids", "retest_evidence_ids"}
+    allowed = required | {"affected_targets"}
     result: list[dict[str, Any]] = []
     seen: set[str] = set()
     for index, raw in enumerate(values):
         path = f"$.gates[{index}]"
         item = require_object(raw, path)
         reject_unknown(item, allowed, path)
-        require_fields(item, allowed, path)
+        require_fields(item, required, path)
         gate_id = require_string(item["id"], f"{path}.id", set(SAFETY_GATES))
         if gate_id in seen:
             raise ValidationError(f"{path}.id", f"duplicate gate id {gate_id!r}")
@@ -459,6 +954,11 @@ def validate_gates(
         evidence_ids = validate_evidence_ids(item["evidence_ids"], f"{path}.evidence_ids", evidence_by_id)
         retest_ids = validate_evidence_ids(
             item["retest_evidence_ids"], f"{path}.retest_evidence_ids", evidence_by_id
+        )
+        affected_targets = (
+            validate_affected_targets(item["affected_targets"], f"{path}.affected_targets")
+            if "affected_targets" in item
+            else sorted(PUBLISH_THRESHOLDS)
         )
         if state == "active" and not has_reproducible_result(
             evidence_ids,
@@ -487,6 +987,7 @@ def validate_gates(
                 "state": state,
                 "evidence_ids": evidence_ids,
                 "retest_evidence_ids": retest_ids,
+                "affected_targets": affected_targets,
             }
         )
     return sorted(result, key=lambda item: item["id"])
@@ -580,6 +1081,8 @@ def validate(payload: Any) -> dict[str, Any]:
         "publish_target",
         "dimensions",
         "evidence",
+        "evidence_lanes",
+        "quality_evaluation",
         "coverage",
         "gates",
         "publish_checks",
@@ -597,6 +1100,11 @@ def validate(payload: Any) -> dict[str, Any]:
         root["publish_target"], "$.publish_target", set(PUBLISH_THRESHOLDS)
     )
     evidence, evidence_by_id = validate_evidence(root["evidence"])
+    evidence_lanes = validate_evidence_lanes(root["evidence_lanes"], evidence_by_id)
+    quality_evaluation = validate_quality_evaluation(
+        root["quality_evaluation"], evidence_by_id, evidence_lanes["probabilistic-eval"]
+    )
+    validate_identity_bound_lanes(evidence_lanes, evidence_by_id, quality_evaluation)
     dimensions = validate_dimensions(root["dimensions"], evidence_by_id)
     coverage = validate_coverage(root["coverage"], evidence_by_id)
     gates = validate_gates(root["gates"], evidence_by_id)
@@ -611,10 +1119,13 @@ def validate(payload: Any) -> dict[str, Any]:
         "publish_target": publish_target,
         "dimensions": dimensions,
         "evidence": evidence,
+        "evidence_lanes": evidence_lanes,
+        "quality_evaluation": quality_evaluation,
         "coverage": coverage,
         "gates": gates,
         "publish_checks": publish_checks,
         "target_required_check_ids": target_required_check_ids,
+        "target_required_lane_ids": sorted(TARGET_REQUIRED_LANES[publish_target]),
     }
 
 
@@ -752,13 +1263,21 @@ def compute(data: dict[str, Any]) -> dict[str, Any]:
             )
 
     active_gates: list[dict[str, Any]] = []
+    blocking_gates: list[dict[str, Any]] = []
     for gate in data["gates"]:
         if gate["state"] == "active":
             cap = SAFETY_GATES[gate["id"]]
-            active_gates.append({"cap": as_json_number(cap), "id": gate["id"]})
-            applied_caps.append(
-                {"id": gate["id"], "source": "safety-gate", "value": as_json_number(cap)}
-            )
+            active_gate = {
+                "affected_targets": gate["affected_targets"],
+                "cap": as_json_number(cap),
+                "id": gate["id"],
+            }
+            active_gates.append(active_gate)
+            if data["publish_target"] in gate["affected_targets"]:
+                blocking_gates.append(dict(active_gate))
+                applied_caps.append(
+                    {"id": gate["id"], "source": "safety-gate", "value": as_json_number(cap)}
+                )
 
     readiness_score = min([raw_score] + [Decimal(str(item["value"])) for item in applied_caps])
     threshold = PUBLISH_THRESHOLDS[data["publish_target"]]
@@ -775,16 +1294,32 @@ def compute(data: dict[str, Any]) -> dict[str, Any]:
         for item in data["publish_checks"]
         if not item["required"] and item["status"] != "pass"
     ]
+    required_lane_ids = set(data["target_required_lane_ids"])
+    failed_lanes = sorted(
+        lane_id
+        for lane_id, lane in data["evidence_lanes"].items()
+        if lane["status"] == "FAIL"
+    )
+    unverified_required_lanes = sorted(
+        lane_id
+        for lane_id in required_lane_ids
+        if data["evidence_lanes"][lane_id]["status"] in {"UNVERIFIED", "N/A"}
+    )
+    optional_lane_gaps = sorted(
+        lane_id
+        for lane_id, lane in data["evidence_lanes"].items()
+        if lane_id not in required_lane_ids and lane["status"] == "UNVERIFIED"
+    )
 
-    if active_gates:
+    if blocking_gates:
         decision = "BLOCKED"
-    elif required_failed:
+    elif required_failed or failed_lanes:
         decision = "NOT_READY"
-    elif required_unverified or distribution_evidence_gaps:
+    elif required_unverified or distribution_evidence_gaps or unverified_required_lanes:
         decision = "INSUFFICIENT_EVIDENCE"
     elif readiness_score < threshold:
         decision = "NOT_READY"
-    elif optional_gaps:
+    elif optional_gaps or optional_lane_gaps:
         decision = "READY_WITH_CONDITIONS"
     else:
         decision = "READY"
@@ -802,6 +1337,7 @@ def compute(data: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "active_gates": active_gates,
+        "blocking_gates": blocking_gates,
         "applied_caps": sorted(applied_caps, key=lambda item: (item["value"], item["id"])),
         "coverage": {
             "confidence": confidence,
@@ -814,6 +1350,13 @@ def compute(data: dict[str, Any]) -> dict[str, Any]:
         "decision": decision,
         "dimensions": dimensions_output,
         "distribution_evidence_gaps": distribution_evidence_gaps,
+        "evidence_lanes": {
+            "failed": failed_lanes,
+            "lanes": data["evidence_lanes"],
+            "optional_gaps": optional_lane_gaps,
+            "required": data["target_required_lane_ids"],
+            "unverified_required": unverified_required_lanes,
+        },
         "mode": data["mode"],
         "ok": True,
         "policy_version": POLICY_VERSION,
@@ -825,6 +1368,7 @@ def compute(data: dict[str, Any]) -> dict[str, Any]:
         },
         "publish_target": data["publish_target"],
         "publish_threshold": as_json_number(threshold),
+        "quality_evaluation": data["quality_evaluation"],
         "rubric_fingerprint": fingerprint,
         "rubric_id": data["rubric_id"],
         "schema_version": SCHEMA_VERSION,
@@ -832,7 +1376,7 @@ def compute(data: dict[str, Any]) -> dict[str, Any]:
             "raw_quality": as_json_number(raw_score),
             "publish_readiness": as_json_number(readiness_score),
         },
-        "vetoed": bool(active_gates),
+        "vetoed": bool(blocking_gates),
     }
 
 

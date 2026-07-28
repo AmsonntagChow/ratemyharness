@@ -12,6 +12,8 @@ For <user>, the harness turns <input> into <observable outcome> within <time/cos
 
 Name the simplest credible baseline: a plain model call, a bounded tool loop, the previous runtime, or a human workflow. Compare the same model, tools, data, permissions, and stopping condition.
 
+Keep runtime correctness and task quality separate. A stable harness with poor task success is not a good product; a capable model running inside a harness that leaks data or duplicates effects is not a safe product.
+
 ## Review matrix
 
 | Question | Strong evidence | Common failure |
@@ -29,8 +31,8 @@ Name the simplest credible baseline: a plain model call, a bounded tool loop, th
 
 1. Run at least one representative happy path and verify the real outcome, not only the final answer.
 2. Inject one tool failure and one cancellation; verify truthful reporting and cleanup.
-3. Compare against the simplest baseline using hidden task assertions.
-4. Record success, user interventions, latency, token/tool cost, and unsafe effects.
+3. Compare repeated runs against the simplest baseline using hidden task assertions and one immutable harness/model/prompt/tools/data/dataset/rubric/judge identity tuple.
+4. Record thresholds, success variance, user interventions, latency, cost per successful task, and unsafe effects; calibrate any LLM judge.
 5. Test one repeated run to reveal stale state or duplicate side effects.
 
 ## Product verdict rules

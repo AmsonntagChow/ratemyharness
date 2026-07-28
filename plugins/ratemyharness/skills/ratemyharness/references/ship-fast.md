@@ -12,19 +12,12 @@ Use this only for the `local-prototype` degree. It reduces breadth, never safety
 6. Check session isolation when any state persists.
 7. Compare the harness to the simplest plausible baseline or label value unverified.
 
-Stop immediately on a fixed veto. Do not spend a quick review on style while an unsafe path remains.
+Stop immediately on an active veto affecting the requested target. Do not spend a quick review on style while an unsafe path remains.
 
 ## Compact output
 
-```text
-Decision:
-Maximum safe target:
-Why, in one sentence:
+Use the Verdict and finding contract already loaded from `references/review-contract.md`; do not define a second quick-mode format. Compactness never caps its issue lists.
 
-Blocker or largest unknown:
-Fastest safe fix:
-Acceptance test:
-Next review depth needed:
-```
+After the lists, report only the decision, maximum safe target, one-sentence rationale, fastest safe fix, acceptance test, and next review depth. The next-action cap never removes an issue from the opening lists.
 
 A quick pass authorizes only local-prototype use. It is not evidence for team sharing, public release, privileged production, or high-stakes use.
