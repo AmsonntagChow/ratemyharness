@@ -25,6 +25,12 @@ So yes: the loop is part of the harness. RateMyHarness can review an isolated lo
 
 Choose one method. Do not install duplicate copies in the same client and scope.
 
+The `skills` CLI is the shortest path and works in Codex, Claude Code, Cursor, and every other Agent Skills client:
+
+```bash
+npx skills add AmsonntagChow/ratemyharness --skill ratemyharness
+```
+
 For Codex, add this repository as a plugin marketplace:
 
 ```bash
@@ -41,17 +47,11 @@ For Claude Code:
 
 ```text
 /plugin marketplace add AmsonntagChow/ratemyharness
-/plugin install ratemyharness@amsonntagchow-ratemyharness
-/reload-plugins
 ```
 
-For Cursor, Codex, Claude Code, or another Agent Skills client through the portable `skills` CLI:
+Send only that line: `/plugin` reads everything after it as a single argument, so a multi-line paste arrives as one malformed repository name. Once it is added, open `/plugins`, install **RateMyHarness** from the menu, and start a new session.
 
-```bash
-npx skills add AmsonntagChow/ratemyharness --skill ratemyharness
-```
-
-The Skill can also be installed manually by copying `skills/ratemyharness` into the skills directory used by the agent.
+The Skill can also be installed manually by copying `skills/ratemyharness` into the skills directory used by the agent. No method updates itself: run the install again to move to a newer release.
 
 ## Start an audit
 

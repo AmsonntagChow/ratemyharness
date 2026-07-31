@@ -25,6 +25,12 @@ RateMyHarness 审计 AI Agent 周边的运行时：循环、工具分发、上�
 
 请选择一种方式。不要在同一个客户端和作用域中安装重复副本。
 
+`skills` CLI 最短，且在 Codex、Claude Code、Cursor 以及其他所有 Agent Skills 客户端都能用：
+
+```bash
+npx skills add AmsonntagChow/ratemyharness --skill ratemyharness
+```
+
 对于 Codex，请将此仓库添加为插件市场：
 
 ```bash
@@ -41,17 +47,11 @@ codex plugin add ratemyharness@ratemyharness
 
 ```text
 /plugin marketplace add AmsonntagChow/ratemyharness
-/plugin install ratemyharness@amsonntagchow-ratemyharness
-/reload-plugins
 ```
 
-对于 Cursor、Codex、Claude Code 或其他 Agent Skills 客户端，可通过可移植的 `skills` CLI 安装：
+只发这一条：`/plugin` 会把它后面的全部内容当作一个参数，多行粘贴会被读成一个畸形仓库名。添加成功后打开 `/plugins`，在菜单里安装 **RateMyHarness**，再开一个新会话。
 
-```bash
-npx skills add AmsonntagChow/ratemyharness --skill ratemyharness
-```
-
-也可以手动安装此 Skill：将 `skills/ratemyharness` 复制到 Agent 使用的 Skill 目录中。
+也可以手动安装此 Skill：将 `skills/ratemyharness` 复制到 Agent 使用的 Skill 目录中。 所有方式都不会自动更新：要升级到新版本，重新执行一次安装命令即可。
 
 ## 开始审计
 
