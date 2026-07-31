@@ -76,6 +76,8 @@ Follow one request through `input -> context -> model step -> validation -> auth
 
 Use the degree to bound breadth and the role reference to choose emphasis. Use controlled fixtures for failure, cancellation, retry, concurrency, restart, context pressure, and exhausted budgets. Inspect executable paths before running them; keep every replay bounded and inert. Test deterministic runtime invariants before judging probabilistic task quality.
 
+Exercise concurrency as a simultaneous burst, not as repetition. Fire several overlapping runs at the same state-changing effect, then inspect durable state for duplicated effects, lost updates, and split invariants; a serial loop cannot reach the window where two runs interleave, so it proves nothing about it. A burst that duplicates an effect is runtime evidence. A clean burst is not a pass on its own: locate the compensating guard — an end-to-end idempotency key the effect owner honors, a unique constraint, a lease, or transaction isolation — and when no guard exists, file the open race window as a static-with-inferred-consequence finding even though this burst did not trip it.
+
 Compare against the simplest credible baseline when value is in scope, holding the task, model, tools, data, permissions, and stopping condition constant. Use equal repeated arms; report successes, count-derived uplift against a positive minimum, task-success thresholds, observed and maximum variance, cost per success, and latency. Record judge kind, ID, version, and digest; calibrate an LLM judge. Bind probabilistic and public online evidence to the SHA-256 of the harness/build-model-prompt-tools-data-dataset-rubric-judge identity tuple.
 
 ### 4. Produce closed-loop findings and a verdict
