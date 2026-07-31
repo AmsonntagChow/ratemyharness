@@ -38,10 +38,10 @@ For Codex, add this repository as a plugin marketplace:
 codex plugin marketplace add AmsonntagChow/ratemyharness
 ```
 
-Then open `/plugins` in Codex CLI or the Plugins Directory in the desktop app, install **RateMyHarness**, and start a new session. You can also run:
+Then open `/plugins` in Codex CLI or the Plugins Directory in the desktop app, install **RateMyHarness**, and start a new session. Or run both commands directly:
 
 ```bash
-codex plugin add ratemyharness@ratemyharness
+codex plugin add ratemyharness@amsonntagchow-ratemyharness
 ```
 
 For Claude Code:

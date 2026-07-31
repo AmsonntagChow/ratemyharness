@@ -38,10 +38,10 @@ npx skills add AmsonntagChow/ratemyharness --skill ratemyharness
 codex plugin marketplace add AmsonntagChow/ratemyharness
 ```
 
-然后在 Codex CLI 中打开 `/plugins`，或在桌面应用中打开 Plugins Directory，安装 **RateMyHarness** 并启动新会话。你也可以运行：
+然后在 Codex CLI 中打开 `/plugins`，或在桌面应用中打开 Plugins Directory，安装 **RateMyHarness** 并启动新会话。或者直接跑这两条命令：
 
 ```bash
-codex plugin add ratemyharness@ratemyharness
+codex plugin add ratemyharness@amsonntagchow-ratemyharness
 ```
 
 对于 Claude Code：
