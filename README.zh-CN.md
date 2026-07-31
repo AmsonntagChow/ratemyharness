@@ -1,6 +1,6 @@
 # RateMyHarness
 
-[English](README.md) | 简体中文 | [harness.ratemy.sh](https://harness.ratemy.sh/zh/)
+[English](README.md) | 简体中文
 
 为 AI Agent 运行底座提供基于证据的上线评审。
 
@@ -8,6 +8,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-2f855a.svg)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-5b5bd6.svg)](https://agentskills.io/)
+[![ratemy.sh](https://img.shields.io/badge/ratemy.sh-harness-C4500F.svg)](https://harness.ratemy.sh/zh/)
 [![skills.sh](https://skills.sh/b/AmsonntagChow/ratemyharness)](https://skills.sh/amsonntagchow/ratemyharness/ratemyharness)
 
 RateMyHarness 审计 AI Agent 周边的运行时：循环、工具分发、上下文、状态、记忆、权限、沙箱、审批、重试、预算、取消、终止、追踪、评估和恢复。

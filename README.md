@@ -1,6 +1,6 @@
 # RateMyHarness
 
-English | [简体中文](README.zh-CN.md) | [harness.ratemy.sh](https://harness.ratemy.sh/)
+English | [简体中文](README.zh-CN.md)
 
 Evidence-backed release review for AI agent harnesses.
 
@@ -8,6 +8,7 @@ Evidence-backed release review for AI agent harnesses.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-2f855a.svg)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-5b5bd6.svg)](https://agentskills.io/)
+[![ratemy.sh](https://img.shields.io/badge/ratemy.sh-harness-C4500F.svg)](https://harness.ratemy.sh/)
 [![skills.sh](https://skills.sh/b/AmsonntagChow/ratemyharness)](https://skills.sh/amsonntagchow/ratemyharness/ratemyharness)
 
 RateMyHarness audits the runtime around an AI agent: the loop, tool dispatch, context, state, memory, permissions, sandbox, approvals, retries, budgets, cancellation, termination, tracing, evaluation, and recovery.
