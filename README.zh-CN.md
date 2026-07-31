@@ -1,6 +1,6 @@
 # RateMyHarness
 
-[English](README.md) | 简体中文
+[English](README.md) | 简体中文 | [harness.ratemy.sh](https://harness.ratemy.sh/zh/)
 
 为 AI Agent 运行底座提供基于证据的上线评审。
 

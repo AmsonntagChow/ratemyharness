@@ -1,6 +1,6 @@
 # RateMyHarness
 
-English | [简体中文](README.zh-CN.md)
+English | [简体中文](README.zh-CN.md) | [harness.ratemy.sh](https://harness.ratemy.sh/)
 
 Evidence-backed release review for AI agent harnesses.
 
